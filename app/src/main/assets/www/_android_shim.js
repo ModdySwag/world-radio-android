@@ -235,10 +235,6 @@
       ".wr-nav button:active{transform:scale(.96);border-color:var(--cyan)}",
       ".wr-nav button.wr-on{border-color:var(--cyan);background:var(--wr-btn,transparent)}",
       ".wr-sep{height:1px;background:var(--line);margin:0 14px 12px;opacity:.5}",
-      /* a one-line, non-blocking note: never a dialog for something the user did not do */
-      ".wr-note{display:none;margin:0 14px 10px;padding:8px 10px;border:2px solid var(--warn,#ffb454);",
-      "  border-radius:10px;font-size:11.5px;line-height:1.4}",
-      ".wr-note.wr-show{display:block}",
       /* the visualiser, lifted out of the page's bar and into the sheet */
       ".wr-vizsec{display:none;padding:0 14px calc(20px + env(safe-area-inset-bottom,0px))}",
       "#wrSheet.wr-viz .wr-vizsec{display:block}",
@@ -269,20 +265,6 @@
       ".wr-checkrows .wr-crow.warn b{color:var(--warn,#ffb454)}",
       ".wr-checkrows .wr-crow span{color:var(--mut)}",
       ".wr-checkrows .wr-crow i{font-style:normal;font-weight:800;flex:0 0 108px}",
-      /* the audio-contention dialog */
-      ".wr-ask{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;",
-      "  background:rgba(4,5,10,.72);padding:20px}",
-      ".wr-ask.wr-show{display:flex}",
-      ".wr-ask .wr-askbox{background:var(--wr-sheet,#12131e);border:2px solid var(--cyan);",
-      "  border-radius:16px;padding:16px;max-width:340px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.6)}",
-      ".wr-ask h3{margin:0 0 6px;font-size:15px}",
-      ".wr-ask p{margin:0 0 13px;font-size:12px;color:var(--mut);line-height:1.45}",
-      ".wr-ask button{display:block;width:100%;margin-bottom:8px;border:2px solid var(--line);",
-      "  background:var(--wr-btn,rgba(255,255,255,.04));color:inherit;border-radius:12px;",
-      "  padding:11px 12px;font-size:13px;font-weight:800;cursor:pointer;text-align:left}",
-      ".wr-ask button:last-child{margin-bottom:0}",
-      ".wr-ask button b{display:block;font-size:11px;font-weight:600;color:var(--mut);margin-top:2px}",
-      ".wr-ask button:first-of-type{border-color:var(--pink)}",
       /* the station a random jump landed on, briefly lit */
       ".card.wr-picked{outline:3px solid var(--cyan);outline-offset:2px;border-radius:14px 6px 14px 6px}"
     ].join("");
@@ -302,7 +284,6 @@
       '  <button class="wr-round" data-wr="play" title="Play or pause">▶</button>' +
       '</div>' +
       '<div class="wr-full">' +
-      '  <div class="wr-note" id="wrNote"></div>' +
       '  <div class="wr-hero">' +
       '    <img id="wrBigArt" alt="">' +
       '    <div style="min-width:0">' +
@@ -730,43 +711,20 @@
 
   /* ------------------------------------------------- who gets the sound ----
 
-     The service does not ask Android for audio focus, and this shell does not pretend to
-     own the output. That is the fix for "another app wants the sound" arriving when
-     nothing else was playing: the WebView's engine - which is what actually plays the
-     stream - requests focus itself, exactly as any media app does. The service asking for
-     it as well made one app look like two, the framework reported a loss or a refusal back
-     to us, and playback died a fraction of a second after it started.
+     There is nothing here, and that is the point. The app does not ask Android for audio
+     focus, and it does not try to work out who else is playing either.
 
-     So the service only *watches* now, and it filters out this app's own audio by UID. The
-     only things it can tell us are honest:
-       "otherApp"      another app genuinely started playing
-       "otherAppGone"  it stopped again
-     Nothing else arrives, and nothing here second-guesses the system. */
-  var FOCUS = { lastKind: "", other: false, needsTap: false, askPending: false };
+     The WebView's engine plays the stream and requests focus itself, as any media app does;
+     an earlier version had the service request focus too, so one app looked like two and the
+     framework reported a loss or a refusal about this app's own audio. That is what stopped
+     playback a fraction of a second after it started and blamed an app that was never there.
 
-  function focusEvent(kind) {
-    var wasPlaying = info().playing;
-    FOCUS.lastKind = kind;
-
-    if (kind === "otherApp") {
-      FOCUS.other = true;
-      /* Only interrupt something that was actually playing: if the radio was already
-         stopped there is nothing to ask the user about. */
-      if (wasPlaying) {
-        pausePlayback();
-        askContention();
-      }
-      return { other: true, playing: false };
-    }
-
-    if (kind === "otherAppGone") {
-      FOCUS.other = false;
-      return { other: false, playing: info().playing };
-    }
-
-    /* anything else is not ours to act on */
-    return { ignored: kind };
-  }
+     Working out "who else is playing" instead would mean reading the playback configuration
+     list - and the methods that say whose audio it is (isActive, getClientUid) are hidden
+     from the public SDK. Any answer this app gave would be a guess, and a wrong guess about
+     another app is precisely what the user saw. So it stays out of it: the radio plays when
+     the page plays, and when the page stops for any reason the notification stays up with
+     Play rather than inventing a reason. */
 
   /* ------------------------------------------------ how playback failed ---- */
 
@@ -853,78 +811,6 @@
 
   /* --------------------------------------------------- who gets the sound ---- */
 
-  /* When another app takes the output for good, the user decides - not us. Shown only when
-     they are actually looking at the app: in the background the notification already
-     carries the same two ways out (Play to take it back, Stop to end it). */
-  /* A one-line note that fades: for things the user should know but never asked about. */
-  var noteTimer = null;
-  function note(text, ms) {
-    var el = $("#wrNote");
-    if (!el) return false;
-    el.textContent = text;
-    el.classList.add("wr-show");
-    if (noteTimer) window.clearTimeout(noteTimer);
-    noteTimer = window.setTimeout(function () {
-      el.classList.remove("wr-show");
-      noteTimer = null;
-    }, ms || 7000);
-    return true;
-  }
-
-  function closeNote() {
-    var el = $("#wrNote");
-    if (el) el.classList.remove("wr-show");
-  }
-
-  /* The dialog is for one thing only: another app genuinely started playing while the radio
-     was playing. A take-over that arrives straight after the user has already answered is
-     reported quietly instead of asked again - a dialog they cannot satisfy is what trapped
-     v1.4.0 (ask, answer, refuse, ask). A fresh take-over later gets a fresh dialog. */
-  var ASK = { at: 0, answeredAt: 0, count: 0 };
-
-  function askContention() {
-    var box = $("#wrAsk");
-    if (!box) return false;
-    var now = Date.now();
-    if (!FOCUS.askPending && ASK.answeredAt && now - ASK.answeredAt < 8000) {
-      note("Another app is playing \u2014 press play when you want the radio back.");
-      return false;
-    }
-    if (doc.hidden) { FOCUS.askPending = true; return false; }
-    FOCUS.askPending = false;
-    ASK.at = now;
-    ASK.count++;
-    box.classList.add("wr-show");
-    return true;
-  }
-
-  function closeAsk() {
-    var b = $("#wrAsk");
-    if (b) b.classList.remove("wr-show");
-  }
-
-  function answerContention(what) {
-    closeAsk();
-    ASK.answeredAt = Date.now();         // the moment the user answered, for the flap guard
-    if (what === "resume") {
-      /* Starting the radio again goes through the service: it is the thing that can speak
-         to the page while the app is in the background. */
-      if (host && host.resume) { try { host.resume(); return true; } catch (e) { } }
-      playPlayback();
-      return true;
-    }
-    if (what === "pause") {
-      /* already stopped with the notification still up: nothing to do */
-      FOCUS.askPending = false;
-      return true;
-    }
-    /* Stop means stop: the page stops, and the service is told to take the notification
-       down too rather than leaving it offering to reconnect. */
-    pausePlayback();
-    if (host && host.stop) { try { host.stop(); } catch (e) { } }
-    return true;
-  }
-
   /* --------------------------------------------------------- system check ---- */
 
   function canPlay(mime) {
@@ -982,9 +868,7 @@
     row(nf === false ? "warn" : "ok", "Notifications",
         nf === false ? "not granted \u2014 no lock-screen controls" : (nf === true ? "granted" : "not reported"));
 
-    row(FOCUS.other ? "warn" : "ok", "Sound sharing",
-        FOCUS.other ? "another app is playing at the moment \u2014 the radio waits its turn"
-                    : "the app asks for no exclusive audio, so the radio mixes normally");
+    row("ok", "Sound sharing", "the app asks for no exclusive audio, so the radio mixes normally");
 
     row(navigator.onLine ? "ok" : "warn", "Network",
         navigator.onLine ? "online" : "offline \u2014 the list still works, streams won't");
@@ -1049,30 +933,6 @@
     return !!on;
   }
 
-  /* The dialog lives on <body>, not inside the sheet: the sheet is a transformed ancestor,
-     which would make it the containing block for anything fixed inside it - and clip it. */
-  function buildAsk() {
-    var box = doc.createElement("div");
-    box.className = "wr-ask";
-    box.id = "wrAsk";
-    box.innerHTML =
-      '<div class="wr-askbox">' +
-      "  <h3>Another app is playing</h3>" +
-      "  <p>Something else on this device started playing, so the radio stopped instead of " +
-      "talking over it. What should the radio do?</p>" +
-      '  <button data-ask="resume">Continue here<b>Start the radio again</b></button>' +
-      '  <button data-ask="pause">Pause<b>Leave it stopped; press play whenever you want it back</b></button>' +
-      '  <button data-ask="stop">Stop<b>End playback and clear the notification</b></button>' +
-      "</div>";
-    box.addEventListener("click", function (ev) {
-      var b = ev.target.closest ? ev.target.closest("[data-ask]") : null;
-      if (!b) return;
-      answerContention(b.getAttribute("data-ask"));
-    });
-    doc.body.appendChild(box);
-    return box;
-  }
-
   /* -------------------------------------------------------------- assemble ---- */
 
   killPopOut();
@@ -1084,7 +944,6 @@
 
   var sheet = buildSheet();
   sheetEl = sheet;
-  buildAsk();
   /* No audio is touched at startup. v1.4.0 probed whether a tap is needed by playing
      silence on launch - with no user gesture the WebView can refuse that probe, which
      falsely marked the device as needing a tap AND poked the device's audio focus at
@@ -1135,9 +994,9 @@
     }, 700);
     SHEET.visible = true;
 
-    /* coming back to the app: if something took the sound while we were away, ask now */
+    /* coming back to the app: the state may have moved on while we were away */
     doc.addEventListener("visibilitychange", function () {
-      if (!doc.hidden && FOCUS.askPending) askContention();
+      if (!doc.hidden && sheetCtl) sheetCtl.measure();
     });
 
     window.addEventListener("beforeunload", function () {
@@ -1158,30 +1017,14 @@
     toggle: function () { if (info().playing) { pausePlayback(); } else { playPlayback(); } },
     info: info,
     sheet: function () { return SHEET; },
-    /* called by PlaybackService with the system's audio-focus verdict */
-    focus: focusEvent,
-    /* the per-device check, and the audio-contention dialog */
+    /* the per-device check */
     check: renderCheck,
     checkToggle: toggleCheck,
     checkReport: checkReport,
-    ask: function (what) { return what ? answerContention(what) : askContention(); },
-    askOpen: function () {
-      var b = $("#wrAsk");
-      return !!b && b.classList.contains("wr-show");
-    },
     probe: probeAutoplay,
-    askReset: function () {
-      /* test surface: clear the take-over episode so a fresh one can be driven deterministically */
-      ASK.at = 0; ASK.answeredAt = 0; FOCUS.askPending = false;
-      return true;
-    },
-    askCount: function () { return ASK.count; },
     playfail: function () {
       return { last: PLAYFAIL.last, gestureNeeded: PLAYFAIL.gestureNeeded,
                unsupported: PLAYFAIL.unsupported, probed: PLAYFAIL.probed };
-    },
-    focusState: function () {
-      return { lastKind: FOCUS.lastKind, other: FOCUS.other, needsTap: FOCUS.needsTap };
     },
     theme: function (mode) { return applyTheme(mode || (themeNow() === "light" ? "dark" : "light")); },
     random: randomStation,

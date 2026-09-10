@@ -283,42 +283,6 @@ public class MainActivity extends Activity {
             });
         }
 
-        /** Stop for good: the user chose Stop in the shell's dialog, so the notification
-         *  must come down rather than sitting there offering to reconnect. */
-        @JavascriptInterface
-        public void stop() {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    Intent i = new Intent(MainActivity.this, PlaybackService.class);
-                    i.setAction(PlaybackService.ACTION_PAUSE);
-                    try {
-                        startService(i);
-                    } catch (Exception e) {
-                        Log.w(TAG, "stop: " + e);
-                    }
-                }
-            });
-        }
-
-        /** The user chose "take the sound back" in the shell's dialog: only the service can
-         *  start the stream again while the app is backgrounded, so it takes it from here. */
-        @JavascriptInterface
-        public void resume() {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    Intent i = new Intent(MainActivity.this, PlaybackService.class);
-                    i.setAction(PlaybackService.ACTION_RESUME);
-                    try {
-                        startForegroundService(i);
-                    } catch (Exception e) {
-                        Log.w(TAG, "resume refused by the system: " + e);
-                    }
-                }
-            });
-        }
-
         /** What the shell needs to describe this device in its own check panel - and what a
          *  user can paste into a bug report when a tablet misbehaves. */
         @JavascriptInterface

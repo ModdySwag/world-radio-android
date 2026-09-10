@@ -29,14 +29,13 @@ version.
   your filters, and flashes the one it picked.
 - **A static header.** The site's "Header" collapse control is gone in the app: title,
   stats and tagline are always visible.
-- **Shares the sound with the rest of the phone.** The radio asks for no exclusive audio of
-  its own: the engine that actually plays the stream — the device's WebView — handles that,
-  the way any media app does. What this app adds is the decision: when another app really
-  starts playing, the radio stops rather than talking over it and offers *Continue here /
-  Pause / Stop*, and the notification keeps a Play button so it is never stranded.
-  (Asking Android for audio focus a second time, as earlier versions did, made the app fight
-  its own player — which is what produced an "another app wants the sound" dialog on devices
-  where nothing else was playing.)
+- **Shares the sound with the rest of the phone — by staying out of the argument.** The radio
+  asks for no exclusive audio of its own: the engine that actually plays the stream (the
+  device's WebView) handles that, the way any media app does. Earlier versions asked for it
+  from the service as well, which made one app look like two — and produced an "another app
+  wants the sound" dialog on devices where nothing else was playing. Both the request and the
+  dialog are gone. If the stream stops for any reason, the notification stays up with a Play
+  button, so there is always a way back.
 - **It can be mixed with.** Because it claims no exclusive audio, some devices will play the
   radio alongside another app rather than pausing it. If you hear two things at once, pause
   the radio — it isn't fighting anything, but nothing is ducking for it either.
