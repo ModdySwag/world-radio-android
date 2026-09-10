@@ -227,7 +227,7 @@
       ".wr-vol{display:flex;align-items:center;gap:10px;padding:0 14px 12px}",
       ".wr-vol input{flex:1;accent-color:var(--pink);height:22px}",
       ".wr-vol span{font-size:11px;color:var(--mut);min-width:38px;text-align:right}",
-      ".wr-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;padding:2px 14px 16px}",
+      ".wr-nav{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;padding:2px 14px 16px}",
       ".wr-nav button{border:2px solid var(--line);background:var(--wr-btn,rgba(255,255,255,.03));color:inherit;",
       "  border-radius:12px;padding:11px 4px 9px;font-size:10.5px;font-weight:800;cursor:pointer;",
       "  display:flex;flex-direction:column;align-items:center;gap:5px;line-height:1}",
@@ -253,6 +253,32 @@
       ".wr-vizopts button i{font-style:normal;font-size:14px}",
       ".wr-vizopts button.wr-on{border-color:var(--cyan);color:var(--cyan)}",
       ".wr-vizopts button:active{transform:scale(.96)}",
+      /* the per-device system check */
+      ".wr-checksec{display:none;padding:0 14px calc(20px + env(safe-area-inset-bottom,0px))}",
+      "#wrSheet.wr-check .wr-checksec{display:block}",
+      ".wr-checkrows{display:flex;flex-direction:column;gap:1px;border:2px solid var(--line);",
+      "  border-radius:12px;overflow:hidden}",
+      ".wr-checkrows .wr-crow{display:flex;gap:9px;align-items:baseline;padding:8px 10px;",
+      "  font-size:11.5px;background:var(--wr-btn,rgba(255,255,255,.03))}",
+      ".wr-checkrows .wr-crow b{flex:0 0 16px;font-size:13px;text-align:center}",
+      ".wr-checkrows .wr-crow.ok b{color:var(--ok,#7dffa8)}",
+      ".wr-checkrows .wr-crow.warn b{color:var(--warn,#ffb454)}",
+      ".wr-checkrows .wr-crow span{color:var(--mut)}",
+      ".wr-checkrows .wr-crow i{font-style:normal;font-weight:800;flex:0 0 108px}",
+      /* the audio-contention dialog */
+      ".wr-ask{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;",
+      "  background:rgba(4,5,10,.72);padding:20px}",
+      ".wr-ask.wr-show{display:flex}",
+      ".wr-ask .wr-askbox{background:var(--wr-sheet,#12131e);border:2px solid var(--cyan);",
+      "  border-radius:16px;padding:16px;max-width:340px;width:100%;box-shadow:0 18px 50px rgba(0,0,0,.6)}",
+      ".wr-ask h3{margin:0 0 6px;font-size:15px}",
+      ".wr-ask p{margin:0 0 13px;font-size:12px;color:var(--mut);line-height:1.45}",
+      ".wr-ask button{display:block;width:100%;margin-bottom:8px;border:2px solid var(--line);",
+      "  background:var(--wr-btn,rgba(255,255,255,.04));color:inherit;border-radius:12px;",
+      "  padding:11px 12px;font-size:13px;font-weight:800;cursor:pointer;text-align:left}",
+      ".wr-ask button:last-child{margin-bottom:0}",
+      ".wr-ask button b{display:block;font-size:11px;font-weight:600;color:var(--mut);margin-top:2px}",
+      ".wr-ask button:first-of-type{border-color:var(--pink)}",
       /* the station a random jump landed on, briefly lit */
       ".card.wr-picked{outline:3px solid var(--cyan);outline-offset:2px;border-radius:14px 6px 14px 6px}"
     ].join("");
@@ -296,6 +322,15 @@
       '    <button data-wr="reset"><i>↺</i>Reset</button>' +
       '    <button data-wr="top"><i>▲</i>Top</button>' +
       '    <button data-wr="viz"><i>🎛</i>Visual</button>' +
+      '    <button data-wr="check"><i>🩺</i>Check</button>' +
+      '  </div>' +
+      '  <div class="wr-checksec" id="wrCheckSec">' +
+      '    <div class="wr-vizhead"><span>System check</span><b id="wrCheckHead"></b></div>' +
+      '    <div class="wr-checkrows" id="wrCheckRows"></div>' +
+      '    <div class="wr-vizopts" style="grid-template-columns:1fr 1fr">' +
+      '      <button data-check="rerun"><i>↻</i>Run again</button>' +
+      '      <button data-check="copy"><i>⧉</i>Copy report</button>' +
+      '    </div>' +
       '  </div>' +
       '  <div class="wr-vizsec" id="wrVizSec">' +
       '    <div class="wr-vizhead"><span>Visualiser</span><b id="wrVizName">off</b></div>' +
@@ -396,6 +431,18 @@
     sheet.querySelector('[data-wr="grab"]').tabIndex = 0;
 
     sheet.addEventListener("click", function (ev) {
+      var c = ev.target.closest("[data-check]");
+      if (c) {
+        if (c.getAttribute("data-check") === "copy") {
+          renderCheck();
+          var ok = copyText(checkReport());
+          c.innerHTML = "<i>" + (ok ? "\u2713" : "\u2715") + "</i>" + (ok ? "Copied" : "Copy failed");
+          window.setTimeout(function () { c.innerHTML = "<i>\u29c9</i>Copy report"; }, 2000);
+        } else {
+          renderCheck();
+        }
+        return;
+      }
       var b = ev.target.closest("[data-wr]");
       if (!b) return;
       var act = b.getAttribute("data-wr");
@@ -413,6 +460,7 @@
       if (act === "playable") { press("#btnPlayable"); setOpen(false); return; }
       if (act === "reset") { press("#btnReset"); setOpen(false); return; }
       if (act === "top") { press("#toTop"); setOpen(false); return; }
+      if (act === "check") { toggleCheck(); return; }
       if (act === "viz") { toggleViz(); return; }
     });
 
@@ -664,6 +712,12 @@
   function toggleViz() {
     if (vizState().on) { vizCycleTo(0); } else { vizCycleTo(VIZ.style + 1); }
     syncViz();
+    /* the two panels are exclusive, whichever one was opened last */
+    if (sheetEl && vizState().on && sheetEl.classList.contains("wr-check")) {
+      sheetEl.classList.remove("wr-check");
+      var nav = sheetEl.querySelector('[data-wr="check"]');
+      if (nav) nav.classList.remove("wr-on");
+    }
     if (sheetCtl) sheetCtl.measure();
   }
 
@@ -677,7 +731,8 @@
        "loss"          another app has taken the output for good - pause, do not fight back
      Resuming live radio means reconnecting the stream, which is exactly what the page's
      own play button does (it replays the station that is current). */
-  var FOCUS = { armedResume: false, ducked: false, duckBase: null };
+  var FOCUS = { armedResume: false, ducked: false, duckBase: null,
+                lastKind: "", refused: false, needsTap: false, askPending: false };
 
   /* Ducking goes through the page's own volume control. Its audio element is a detached
      `new Audio()` that nothing outside the page can reach, but the slider's handler
@@ -702,6 +757,16 @@
 
   function focusEvent(kind) {
     var wasPlaying = info().playing;
+    FOCUS.lastKind = kind;
+
+    /* the service could not take the output at all: stop rather than play over whoever
+       holds it, then let the user decide what happens next */
+    if (kind === "refused") {
+      FOCUS.refused = true;
+      if (wasPlaying) pausePlayback();
+      askContention();
+      return { refused: true, playing: false };
+    }
 
     if (kind === "duck") {
       if (!FOCUS.ducked) duck(true);
@@ -709,21 +774,295 @@
     }
 
     if (kind === "gain") {
+      FOCUS.refused = false;
       if (FOCUS.ducked) duck(false);
       var resumed = false;
       if (FOCUS.armedResume) {
         FOCUS.armedResume = false;
-        playPlayback();
-        resumed = true;
+        if (PLAYFAIL.gestureNeeded) {
+          /* This device wants a real tap. Firing play() here is what produced the
+             "browser blocked playback" toast on exactly these tablets, so leave it paused
+             with the way back on screen instead. */
+          FOCUS.needsTap = true;
+        } else {
+          playPlayback();
+          resumed = true;
+        }
       }
-      return { ducked: false, resumed: resumed };
+      return { ducked: false, resumed: resumed, needsTap: !!FOCUS.needsTap };
     }
 
     /* a loss: give up the output rather than talking over whoever took it */
     if (FOCUS.ducked) duck(false);
     FOCUS.armedResume = (kind === "lossTransient") && wasPlaying;
     if (wasPlaying) pausePlayback();
+    /* taken over for good: the user gets the choice, not us */
+    if (kind === "loss") askContention();
     return { playing: false, willResume: FOCUS.armedResume };
+  }
+
+  /* ------------------------------------------------ how playback failed ---- */
+
+  /* The page reports a play() rejection by NAME through __dbg.audioState().err and shows
+     the same "your browser blocked playback" toast for every one of them. They are not
+     the same problem and they do not want the same answer:
+       NotAllowedError    the browser wants a real tap - never retry without one
+       AbortError         our own stop interrupted the start: a race, retry once
+       NotSupportedError  this device cannot decode that stream - do not retry
+       NotReadableError   the device failed to read or decode it - do not retry
+     Device WebViews differ in which of these they raise, which is how "some tablets fail"
+     happens with no fault in the app. */
+  var PLAYFAIL = { last: "", retriedAt: 0, gestureNeeded: false, unsupported: false };
+
+  function playError() {
+    var d = window.__dbg;
+    try { return d && d.audioState ? String(d.audioState().err || "") : ""; }
+    catch (e) { return ""; }
+  }
+
+  function notePlayError() {
+    var err = playError();
+    if (!err || err === PLAYFAIL.last) return;
+    PLAYFAIL.last = err;
+    var now = Date.now();
+
+    if (err === "AbortError") {
+      /* a start we interrupted ourselves: settle, then retry once, quietly */
+      if (now - PLAYFAIL.retriedAt > 2500) {
+        PLAYFAIL.retriedAt = now;
+        window.setTimeout(function () {
+          if (!info().playing && playError() === "AbortError") playPlayback();
+        }, 700);
+      }
+      return;
+    }
+    if (err === "NotAllowedError") { PLAYFAIL.gestureNeeded = true; return; }
+    if (err === "NotSupportedError" || err === "NotReadableError") { PLAYFAIL.unsupported = true; }
+  }
+
+  /* 10 ms of silence, built in place so nothing has to be fetched. */
+  function silentWav() {
+    var n = 160, buf = new ArrayBuffer(44 + n), v = new DataView(buf);
+    function tag(off, s) { for (var i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)); }
+    tag(0, "RIFF"); v.setUint32(4, 36 + n, true); tag(8, "WAVEfmt ");
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, 8000, true); v.setUint32(28, 8000, true);
+    v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    tag(36, "data"); v.setUint32(40, n, true);
+    for (var i = 0; i < n; i++) v.setUint8(44 + i, 128);
+    var bytes = new Uint8Array(buf), s = "";
+    for (var j = 0; j < bytes.length; j++) s += String.fromCharCode(bytes[j]);
+    try { return "data:audio/wav;base64," + btoa(s); } catch (e) { return null; }
+  }
+
+  /* Whether a stream can start without a tap is a property of the device, so it is probed
+     rather than assumed - and the answer changes the resume policy. */
+  function probeAutoplay(cb) {
+    var url = silentWav(), done = false, a = null;
+    function finish(needed) {
+      if (done) return;
+      done = true;
+      PLAYFAIL.gestureNeeded = !!needed;
+      try { if (a) { a.pause(); a.removeAttribute("src"); } } catch (e) { }
+      if (cb) cb(PLAYFAIL.gestureNeeded);
+    }
+    if (!url) { finish(PLAYFAIL.gestureNeeded); return; }
+    try {
+      a = new Audio(url);
+      a.volume = 0;
+      var pr = a.play();
+      if (pr && pr.then) {
+        pr.then(function () { finish(false); })
+          .catch(function (e) { finish((e && e.name) === "NotAllowedError"); });
+      } else {
+        finish(false);
+      }
+      window.setTimeout(function () { finish(PLAYFAIL.gestureNeeded); }, 1500);
+    } catch (e) {
+      finish(true);
+    }
+  }
+
+  /* --------------------------------------------------- who gets the sound ---- */
+
+  /* When another app takes the output for good, the user decides - not us. Shown only when
+     they are actually looking at the app: in the background the notification already
+     carries the same two ways out (Play to take it back, Stop to end it). */
+  function askContention() {
+    var box = $("#wrAsk");
+    if (!box) return false;
+    if (doc.hidden) { FOCUS.askPending = true; return false; }
+    FOCUS.askPending = false;
+    box.classList.add("wr-show");
+    return true;
+  }
+
+  function closeAsk() {
+    var b = $("#wrAsk");
+    if (b) b.classList.remove("wr-show");
+  }
+
+  function answerContention(what) {
+    closeAsk();
+    if (what === "resume") {
+      /* taking the sound back is the service's job (it owns the focus request) */
+      if (host && host.resume) { try { host.resume(); return true; } catch (e) { } }
+      playPlayback();
+      return true;
+    }
+    if (what === "pause") {
+      /* already paused and holding the notification: nothing to do */
+      FOCUS.askPending = false;
+      return true;
+    }
+    /* stop: the page's stop reports, and the shell tears the session down */
+    pausePlayback();
+    return true;
+  }
+
+  /* --------------------------------------------------------- system check ---- */
+
+  function canPlay(mime) {
+    try { return !!doc.createElement("audio").canPlayType(mime); } catch (e) { return false; }
+  }
+
+  function deviceFacts() {
+    var raw = null, d = {};
+    try { if (host && host.device) { raw = host.device(); } } catch (e) { raw = null; }
+    /* the Android bridge hands back a JSON string; a browser test hands back an object */
+    if (typeof raw === "string") {
+      try { d = JSON.parse(raw) || {}; } catch (e) { d = {}; }
+    } else if (raw && typeof raw === "object") {
+      d = raw;
+    }
+    d.viewport = window.innerWidth + "x" + window.innerHeight;
+    d.dpr = String(window.devicePixelRatio || 1);
+    return d;
+  }
+
+  function checkRows() {
+    var rows = [], dev = deviceFacts();
+    function row(s, l, d) { rows.push({ s: s, l: l, d: d }); }
+
+    row("ok", "Device", [dev.manufacturer, dev.model].filter(Boolean).join(" ") || "unknown");
+    row("ok", "Android", dev.api ? ("API " + dev.api + (dev.release ? " \u00b7 " + dev.release : "")) : "n/a");
+    row("ok", "WebView", dev.webview || "n/a");
+    row("ok", "Screen", dev.viewport + " @ " + dev.dpr + "x");
+
+    var mp3 = canPlay("audio/mpeg"), aac = canPlay('audio/mp4; codecs="mp4a.40.2"'),
+        hls = canPlay("application/vnd.apple.mpegurl") || canPlay("application/x-mpegURL");
+    row(mp3 ? "ok" : "warn", "MP3", mp3 ? "supported" : "not supported \u2014 MP3 stations will fail here");
+    row(aac ? "ok" : "warn", "AAC", aac ? "supported" : "not supported \u2014 AAC stations will fail here");
+    row(hls ? "ok" : "warn", "HLS streams", hls ? "supported" : "not supported \u2014 HLS stations are hidden by the Playable filter");
+
+    var total = 0, playable = 0;
+    try { total = window.__dbg.ALL(); playable = window.__dbg.playableCount(); } catch (e) { }
+    row(total ? "ok" : "warn", "Stations", total
+      ? (playable.toLocaleString() + " of " + total.toLocaleString() + " playable on this device")
+      : "catalogue not loaded yet");
+
+    row(PLAYFAIL.gestureNeeded ? "warn" : "ok", "Start without a tap",
+        PLAYFAIL.gestureNeeded ? "this device needs play to be pressed" : "allowed");
+
+    var st = false;
+    try {
+      localStorage.setItem("rbg-wr-probe", "1");
+      st = localStorage.getItem("rbg-wr-probe") === "1";
+      localStorage.removeItem("rbg-wr-probe");
+    } catch (e) { }
+    row(st ? "ok" : "warn", "Saving", st ? "favourites and volume persist" : "blocked \u2014 favourites won't survive a restart");
+
+    var nf = dev.notifications;
+    row(nf === false ? "warn" : "ok", "Notifications",
+        nf === false ? "not granted \u2014 no lock-screen controls" : (nf === true ? "granted" : "not reported"));
+
+    row(FOCUS.refused ? "warn" : "ok", "Sound sharing",
+        FOCUS.refused ? "another app held the output recently"
+                      : (FOCUS.lastKind ? ("last: " + FOCUS.lastKind) : "nothing has asked for it yet"));
+
+    row(navigator.onLine ? "ok" : "warn", "Network",
+        navigator.onLine ? "online" : "offline \u2014 the list still works, streams won't");
+
+    return rows;
+  }
+
+  function renderCheck() {
+    var box = $("#wrCheckRows");
+    if (!box) return null;
+    var rows = checkRows(), bad = 0;
+    box.innerHTML = rows.map(function (r) {
+      if (r.s !== "ok") bad++;
+      return '<div class="wr-crow ' + r.s + '"><b>' + (r.s === "ok" ? "\u2713" : "!") +
+             "</b><i>" + r.l + "</i><span>" + r.d + "</span></div>";
+    }).join("");
+    var head = $("#wrCheckHead");
+    if (head) head.textContent = bad ? (bad + (bad === 1 ? " to note" : " to note")) : "all good";
+    return { rows: rows, bad: bad };
+  }
+
+  function checkReport() {
+    var rows = checkRows();
+    var L = ["MODDYS World Radio \u2014 system check",
+             "app " + (deviceFacts().app || "?"), ""];
+    rows.forEach(function (r) { L.push((r.s === "ok" ? "[ok]  " : "[!]   ") + r.l + ": " + r.d); });
+    L.push("", "UA: " + navigator.userAgent);
+    return L.join("\n");
+  }
+
+  function copyText(text) {
+    var ta = doc.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:-1000px;opacity:0";
+    doc.body.appendChild(ta);
+    var ok = false;
+    try { ta.select(); ok = doc.execCommand("copy"); } catch (e) { ok = false; }
+    doc.body.removeChild(ta);
+    if (!ok && navigator.clipboard) {
+      try { navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = false; }
+    }
+    return ok;
+  }
+
+  function toggleCheck() {
+    var on = sheetEl && !sheetEl.classList.contains("wr-check");
+    if (sheetEl) {
+      if (on) {
+        /* One panel at a time, and switching the visualiser off is the only honest way to
+           say so: leaving it running would have the tick put it straight back. */
+        vizCycleTo(0);
+        syncViz();
+      }
+      sheetEl.classList.toggle("wr-check", on);
+    }
+    if (on) renderCheck();
+    if (sheetCtl) sheetCtl.measure();
+    var nav = sheetEl && sheetEl.querySelector('[data-wr="check"]');
+    if (nav) nav.classList.toggle("wr-on", !!on);
+    return !!on;
+  }
+
+  /* The dialog lives on <body>, not inside the sheet: the sheet is a transformed ancestor,
+     which would make it the containing block for anything fixed inside it - and clip it. */
+  function buildAsk() {
+    var box = doc.createElement("div");
+    box.className = "wr-ask";
+    box.id = "wrAsk";
+    box.innerHTML =
+      '<div class="wr-askbox">' +
+      "  <h3>Another app wants the sound</h3>" +
+      "  <p>Something else on this device has taken over playback. What should the radio do?</p>" +
+      '  <button data-ask="resume">Continue here<b>Take the sound back \u2014 the other app pauses</b></button>' +
+      '  <button data-ask="pause">Pause<b>Stay paused; press play whenever you want it back</b></button>' +
+      '  <button data-ask="stop">Stop<b>End playback and clear the notification</b></button>' +
+      "</div>";
+    box.addEventListener("click", function (ev) {
+      var b = ev.target.closest ? ev.target.closest("[data-ask]") : null;
+      if (!b) return;
+      answerContention(b.getAttribute("data-ask"));
+    });
+    doc.body.appendChild(box);
+    return box;
   }
 
   /* -------------------------------------------------------------- assemble ---- */
@@ -737,6 +1076,8 @@
 
   var sheet = buildSheet();
   sheetEl = sheet;
+  buildAsk();
+  probeAutoplay();          // only the device can say whether a stream needs a tap
   if (sheet) {
     var ctl = sheetController(sheet);
     sheetCtl = ctl;
@@ -747,6 +1088,7 @@
     var tick = function () {
       syncNow();
       syncViz();
+      notePlayError();
       var s = info();
       var playing = s.playing;
       var chip = $("#wrChip");
@@ -781,6 +1123,11 @@
     }, 700);
     SHEET.visible = true;
 
+    /* coming back to the app: if something took the sound while we were away, ask now */
+    doc.addEventListener("visibilitychange", function () {
+      if (!doc.hidden && FOCUS.askPending) askContention();
+    });
+
     window.addEventListener("beforeunload", function () {
       clearInterval(tick);
       clearInterval(visTimer);
@@ -801,6 +1148,22 @@
     sheet: function () { return SHEET; },
     /* called by PlaybackService with the system's audio-focus verdict */
     focus: focusEvent,
+    /* the per-device check, and the audio-contention dialog */
+    check: renderCheck,
+    checkToggle: toggleCheck,
+    checkReport: checkReport,
+    ask: function (what) { return what ? answerContention(what) : askContention(); },
+    askOpen: function () {
+      var b = $("#wrAsk");
+      return !!b && b.classList.contains("wr-show");
+    },
+    probe: probeAutoplay,
+    playfail: function () {
+      return { last: PLAYFAIL.last, gestureNeeded: PLAYFAIL.gestureNeeded, unsupported: PLAYFAIL.unsupported };
+    },
+    focusState: function () {
+      return { lastKind: FOCUS.lastKind, refused: FOCUS.refused, needsTap: FOCUS.needsTap };
+    },
     theme: function (mode) { return applyTheme(mode || (themeNow() === "light" ? "dark" : "light")); },
     random: randomStation,
     viz: function (i) {

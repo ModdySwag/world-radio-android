@@ -117,6 +117,24 @@ So if the web app ever renames those ids, the shell needs the matching edit — 
 listed above. That is the deliberate trade for having one source of truth instead of two
 players that can disagree.
 
+## Compatibility
+
+| | |
+|---|---|
+| Android | **8.0 (API 26) and newer**, up to 15/16-era tablets; `targetSdk 34` |
+| Playback engine | the device's **Android System WebView** — its version, not the Android version, decides what plays |
+| Formats | MP3 and AAC everywhere; **HLS (`.m3u8`) only where the WebView can decode it** (about 3,000 of the stations are HLS) |
+| Cleartext | allowed app-wide: ~8,300 stations are plain `http://` |
+| No WebView at all | the app says so and tells you what to install, instead of crashing |
+
+The **Check** panel in the expanded player reports the WebView version, which formats the
+device can decode, and how many of the 47,994 stations it can actually play — with a
+**Copy report** button for sending that on. If stations misbehave on a device, that report
+is the answer: it is almost always the WebView version or a missing codec.
+
+The **Playable** filter in the player hides anything this device cannot decode, so nobody
+gets stuck tapping stations that were never going to work.
+
 ## Known limitations (v1.x)
 
 - **Broken streams still fail.** Some stations have expired or self-signed certificates;

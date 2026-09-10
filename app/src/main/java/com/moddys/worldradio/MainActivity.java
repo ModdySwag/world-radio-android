@@ -11,6 +11,8 @@ import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
+import android.widget.TextView;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -21,6 +23,8 @@ import android.webkit.WebViewClient;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.lang.ref.WeakReference;
+
+import org.json.JSONObject;
 
 /**
  * Hosts the existing MODDYS World Radio web app in a WebView and connects it to the
@@ -43,18 +47,48 @@ public class MainActivity extends Activity {
 
     private WebView web;
     private String shim;
+    private ViewGroup root;
 
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         askForNotificationPermission();
 
-        web = new WebView(this);
+        root = new FrameLayout(this);
+        setContentView(root, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        if (!buildWeb()) {
+            /* Some tablets ship with no usable WebView at all (disabled, or never
+               updated). Say so instead of crashing on launch. */
+            web = null;
+            showNoWebView();
+            return;
+        }
+        if (state == null) {
+            web.loadUrl(PAGE);
+        } else {
+            web.restoreState(state);
+        }
+        pageRef = new WeakReference<>(web);
+    }
+
+    /** Build the WebView and its client. False when this device has no usable one. */
+    private boolean buildWeb() {
+        try {
+            web = new WebView(this);
+        } catch (Throwable t) {
+            Log.w(TAG, "no usable WebView on this device: " + t);
+            return false;
+        }
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);        // favourites live in localStorage
         s.setAllowFileAccess(true);          // index.html loads countries.js + stations.js
         s.setLoadsImagesAutomatically(true);
+        /* The app leaves this off so the shell (notification, focus regain) can start a
+           stream without a tap. Devices whose WebView ignores it fall back to needing one,
+           which the shell detects and adapts to. */
         s.setMediaPlaybackRequiresUserGesture(false);
         // the page is a file:// origin and the streams are http:// - never block them
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
@@ -68,6 +102,9 @@ public class MainActivity extends Activity {
         web.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageFinished(WebView view, String url) {
+                /* Re-assert this per load: a device that loses the setting between loads is
+                   one of the ways "some tablets" end up unable to start a stream. */
+                try { view.getSettings().setMediaPlaybackRequiresUserGesture(false); } catch (Exception ignored) { }
                 String js = shim();
                 if (!js.isEmpty()) view.evaluateJavascript(js, null);
             }
@@ -83,17 +120,50 @@ public class MainActivity extends Activity {
                 openExternal(url);
                 return true;
             }
+
+            /** A failed load used to be silent: log it so a device report has something. */
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request,
+                                        android.webkit.WebResourceError error) {
+                if (request != null && request.isForMainFrame()) {
+                    Log.w(TAG, "main frame failed: " + request.getUrl() + " - " + error.getDescription());
+                }
+            }
+
+            /** Low-memory tablets kill the renderer, which takes the page and the audio with
+             *  it. Rebuild rather than leaving a blank screen and a dead player. */
+            @Override
+            public boolean onRenderProcessGone(WebView view, android.webkit.RenderProcessGoneDetail detail) {
+                Log.w(TAG, "renderer gone (crashed=" + (detail == null ? "?" : detail.didCrash()) + ") - rebuilding");
+                pageRef = new WeakReference<>(null);
+                if (web != null) {
+                    root.removeView(web);
+                    try { web.destroy(); } catch (Exception ignored) { }
+                    web = null;
+                }
+                if (buildWeb()) {
+                    pageRef = new WeakReference<>(web);
+                    web.loadUrl(PAGE);
+                }
+                return true;                     // handled: Android must not kill the app
+            }
         });
 
-        setContentView(web, new ViewGroup.LayoutParams(
+        root.addView(web, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        return true;
+    }
 
-        if (state == null) {
-            web.loadUrl(PAGE);
-        } else {
-            web.restoreState(state);
-        }
-        pageRef = new WeakReference<>(web);
+    /** The one thing this app cannot work without, so say it plainly rather than die. */
+    private void showNoWebView() {
+        TextView tv = new TextView(this);
+        tv.setText(R.string.no_webview);
+        tv.setTextSize(15);
+        tv.setPadding(48, 96, 48, 48);
+        tv.setBackgroundColor(Color.parseColor("#0B0B0F"));
+        tv.setTextColor(Color.parseColor("#F4F1EA"));
+        root.addView(tv, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
 
     @Override
@@ -212,5 +282,67 @@ public class MainActivity extends Activity {
                 }
             });
         }
+
+        /** The user chose "take the sound back" in the shell's dialog: only the service can
+         *  ask for audio focus, so it takes it from here. */
+        @JavascriptInterface
+        public void resume() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Intent i = new Intent(MainActivity.this, PlaybackService.class);
+                    i.setAction(PlaybackService.ACTION_RESUME);
+                    try {
+                        startForegroundService(i);
+                    } catch (Exception e) {
+                        Log.w(TAG, "resume refused by the system: " + e);
+                    }
+                }
+            });
+        }
+
+        /** What the shell needs to describe this device in its own check panel - and what a
+         *  user can paste into a bug report when a tablet misbehaves. */
+        @JavascriptInterface
+        public String device() {
+            JSONObject o = new JSONObject();
+            try {
+                o.put("manufacturer", Build.MANUFACTURER);
+                o.put("model", Build.MODEL);
+                o.put("api", Build.VERSION.SDK_INT);
+                o.put("release", Build.VERSION.RELEASE);
+                o.put("app", versionName());
+                o.put("webview", webViewVersion());
+                o.put("notifications", notificationsGranted());
+            } catch (Exception e) {
+                Log.w(TAG, "device(): " + e);
+            }
+            return o.toString();
+        }
+    }
+
+    private String versionName() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "?";
+        }
+    }
+
+    /** The WebView package and version: the most useful single fact in a device report,
+     *  because it is what decides which streams can play and whether a tap is needed. */
+    private String webViewVersion() {
+        try {
+            android.content.pm.PackageInfo p = WebView.getCurrentWebViewPackage();
+            return p == null ? "unknown" : (p.packageName + " " + p.versionName);
+        } catch (Throwable t) {
+            return "unknown";
+        }
+    }
+
+    private boolean notificationsGranted() {
+        return Build.VERSION.SDK_INT < 33
+                || checkSelfPermission("android.permission.POST_NOTIFICATIONS")
+                   == PackageManager.PERMISSION_GRANTED;
     }
 }

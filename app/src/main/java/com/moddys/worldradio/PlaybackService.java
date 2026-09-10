@@ -135,6 +135,7 @@ public class PlaybackService extends Service {
             if (requestFocus()) {
                 tellPage("play");
             } else {
+                tellFocus("refused");
                 showPaused(getString(R.string.notification_held));
             }
             return START_NOT_STICKY;
@@ -159,9 +160,10 @@ public class PlaybackService extends Service {
             if (s != null && !s.trim().isEmpty()) station = s.trim();
 
             /* Another app may already be the thing the user is listening to. Ask for the
-               output; if it is refused, stop rather than play over it. */
+               output: if it is refused, stop rather than play over it, and let the page ask
+               the user what they want (continue / pause / stop). */
             if (!requestFocus()) {
-                tellPage("pause");
+                tellFocus("refused");
                 showPaused(getString(R.string.notification_held));
                 return START_NOT_STICKY;
             }
