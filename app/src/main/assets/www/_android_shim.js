@@ -82,6 +82,16 @@
     return false;
   }
 
+  function playPlayback() { press("#bPlay"); }
+
+  /* Stop means disconnect: live radio has no seek, and the page's own stop is the honest
+     version of that (it tells the pop-out too, if one is ever open). */
+  function pausePlayback() {
+    var d = window.__dbg;
+    if (d && typeof d.stop === "function") { try { d.stop(); return; } catch (e) { } }
+    press("#bStop");
+  }
+
   function focusSearch() {
     var q = $("#q");
     if (!q) return;
@@ -657,6 +667,65 @@
     if (sheetCtl) sheetCtl.measure();
   }
 
+  /* ---------------------------------------------------------- audio focus ---- */
+
+  /* Audio focus policy lives here rather than in the service, because this is the part
+     that can be tested against the real page. Android reports what the system decided:
+       "gain"          the other app let go - unduck, and reconnect if we paused for it
+       "duck"          something wants to be heard over us (a navigation prompt)
+       "lossTransient" a call or another player, briefly - pause, and arm a resume
+       "loss"          another app has taken the output for good - pause, do not fight back
+     Resuming live radio means reconnecting the stream, which is exactly what the page's
+     own play button does (it replays the station that is current). */
+  var FOCUS = { armedResume: false, ducked: false, duckBase: null };
+
+  /* Ducking goes through the page's own volume control. Its audio element is a detached
+     `new Audio()` that nothing outside the page can reach, but the slider's handler
+     applies a change to the live element immediately - so lowering and restoring the
+     slider is a duck the stream actually hears. The user's own setting is only ever
+     lowered for as long as something else needs to be heard. */
+  function duck(on) {
+    var el = $("#vol");
+    if (!el) return null;
+    if (on) {
+      if (FOCUS.duckBase === null) FOCUS.duckBase = Number(el.value);
+      el.value = String(Math.max(0, FOCUS.duckBase * 0.25));
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+    } else if (FOCUS.duckBase !== null) {
+      el.value = String(FOCUS.duckBase);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      FOCUS.duckBase = null;
+    }
+    FOCUS.ducked = !!on;
+    return Number(el.value);
+  }
+
+  function focusEvent(kind) {
+    var wasPlaying = info().playing;
+
+    if (kind === "duck") {
+      if (!FOCUS.ducked) duck(true);
+      return { ducked: true, playing: wasPlaying };
+    }
+
+    if (kind === "gain") {
+      if (FOCUS.ducked) duck(false);
+      var resumed = false;
+      if (FOCUS.armedResume) {
+        FOCUS.armedResume = false;
+        playPlayback();
+        resumed = true;
+      }
+      return { ducked: false, resumed: resumed };
+    }
+
+    /* a loss: give up the output rather than talking over whoever took it */
+    if (FOCUS.ducked) duck(false);
+    FOCUS.armedResume = (kind === "lossTransient") && wasPlaying;
+    if (wasPlaying) pausePlayback();
+    return { playing: false, willResume: FOCUS.armedResume };
+  }
+
   /* -------------------------------------------------------------- assemble ---- */
 
   killPopOut();
@@ -725,15 +794,13 @@
 
   /* The shell drives playback through these; keep the names stable. */
   window.__wr = {
-    play: function () { press("#bPlay"); },
-    pause: function () {
-      var d = window.__dbg;
-      if (d && typeof d.stop === "function") { try { d.stop(); return; } catch (e) { } }
-      press("#bStop");
-    },
-    toggle: function () { if (info().playing) { window.__wr.pause(); } else { window.__wr.play(); } },
+    play: playPlayback,
+    pause: pausePlayback,
+    toggle: function () { if (info().playing) { pausePlayback(); } else { playPlayback(); } },
     info: info,
     sheet: function () { return SHEET; },
+    /* called by PlaybackService with the system's audio-focus verdict */
+    focus: focusEvent,
     theme: function (mode) { return applyTheme(mode || (themeNow() === "light" ? "dark" : "light")); },
     random: randomStation,
     viz: function (i) {

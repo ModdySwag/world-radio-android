@@ -29,6 +29,11 @@ version.
   your filters, and flashes the one it picked.
 - **A static header.** The site's "Header" collapse control is gone in the app: title,
   stats and tagline are always visible.
+- **Shares the sound with the rest of the phone.** It takes audio focus when you press
+  play: a call pauses the stream and it reconnects the station you were on afterwards, a
+  navigation prompt ducks the radio (stream intact, so no reconnect gap), and another app
+  taking the output for good is left to it. A focus pause keeps the notification, with a
+  Play button and the reason on it, instead of vanishing mid-call.
 - **Cleartext streams kept.** Android blocks `http://` by default; the network security
   config allows it, because 8,330 of the 47,994 stations are cleartext. HTTPS stations
   are unaffected and certificate checks are *not* bypassed.
@@ -80,7 +85,7 @@ reproducible.)
 | file | role |
 |---|---|
 | `MainActivity.java` | hosts the web app in a WebView; loads `_android_shim.js` after each page load; routes external links to the phone's browser |
-| `PlaybackService.java` | foreground service + `MediaSession` + notification; never touches audio itself |
+| `PlaybackService.java` | foreground service + `MediaSession` + notification; owns audio focus and forwards the system's verdict to the page; never touches audio itself |
 | `assets/www/_android_shim.js` | the only new front-end code: the player sheet, its visualiser styles and light mode, external-link routing, the banner suppression, and state reporting |
 | `res/xml/network_security_config.xml` | allows cleartext for the `http://` stations |
 
@@ -88,6 +93,12 @@ Playback stays in the page — its own single-owner model is not re-implemented.
 reads state from the page's `window.__dbg` API and drives the page's existing play/stop
 controls; if `window.__dbg` ever goes away, playback still works and only the
 notification's station name is lost.
+
+Audio focus is the one thing the service owns that the page cannot: it asks the system for
+the output and forwards each verdict to `window.__wr.focus('gain' | 'duck' |
+'lossTransient' | 'loss')`. The page decides what to do about it, so "paused" still means
+one thing in one place. Ducking goes through the page's own volume slider, because its
+audio element is a detached `new Audio()` that nothing outside the page can reach.
 
 ### The player sheet is coupled to the page's markup, on purpose
 
@@ -108,8 +119,6 @@ players that can disagree.
 
 ## Known limitations (v1.x)
 
-- **Audio focus isn't requested**, so a phone call or another music app may play over the
-  radio instead of pausing it. Worth adding next.
 - **Broken streams still fail.** Some stations have expired or self-signed certificates;
   the app reports the error rather than papering over it.
 - **The app icon is placeholder art** (a broadcast tower in your palette).
