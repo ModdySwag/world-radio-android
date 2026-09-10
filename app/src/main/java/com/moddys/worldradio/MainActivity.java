@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -12,6 +13,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -69,6 +71,18 @@ public class MainActivity extends Activity {
                 String js = shim();
                 if (!js.isEmpty()) view.evaluateJavascript(js, null);
             }
+
+            /** Safety net: this app is a single page, so any attempt to navigate it
+             *  somewhere else is a station's stream or homepage and belongs in the
+             *  phone's browser. Without this the player is replaced by a web page and
+             *  only BACK brings it back. */
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                if (url.startsWith("file:///android_asset")) return false;
+                openExternal(url);
+                return true;
+            }
         });
 
         setContentView(web, new ViewGroup.LayoutParams(
@@ -92,6 +106,18 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         pageRef = new WeakReference<>(null);
         super.onDestroy();
+    }
+
+    /** Open a station's stream or homepage in whatever app the phone uses for it. */
+    private void openExternal(String url) {
+        if (url == null || url.isEmpty()) return;
+        try {
+            Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (Exception e) {
+            Log.w(TAG, "nothing can open " + url + ": " + e);
+        }
     }
 
     /** Back navigates the app's own history (it is hash-routed) before leaving. */
@@ -173,6 +199,18 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void log(String message) {
             Log.i(TAG, "page: " + message);
+        }
+
+        /** The page asking for a station's website or stream to be opened properly. This
+         *  arrives on the WebView's JS thread, so hop to the UI thread to start it. */
+        @JavascriptInterface
+        public void url(final String address) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    openExternal(address);
+                }
+            });
         }
     }
 }

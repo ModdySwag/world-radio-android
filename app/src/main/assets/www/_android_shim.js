@@ -1,26 +1,35 @@
-/* Android shell shim for the MODDYS World Radio web app.
+/* Android shell for MODDYS World Radio.
  *
- * Injected once, after the page's own scripts have run. It does three things and no
- * more:
- *   1. reads authoritative playback state (preferring the page's own window.__dbg API,
- *      falling back to the media element's events) and reports changes to the shell,
- *   2. exposes window.__wr so the notification / lock-screen controls can drive the
- *      page's existing play and stop controls - no playback logic is duplicated here,
- *   3. removes the desktop-only bits (the pop-out opens a second window, which a phone
- *      does not have) and makes tap targets behave on touch.
+ * Adds what the phone needs and removes what only makes sense on a desktop:
  *
- * If window.__dbg ever disappears, playback still works: state then comes from the
- * media events, and the notification simply has no station title to show.
+ *   1. ONE player, not two. The web app's own bottom bar is kept as a hidden control
+ *      plane - all playback still goes through its buttons, so there is exactly one
+ *      source of truth and none of its logic is reimplemented here. The shell renders
+ *      the player you actually see and drive.
+ *   2. That player is a bottom sheet: drag it up for the full view, drag it down (or tap
+ *      the handle) to minimise. It carries the station art, name, country/language/
+ *      codec/bitrate, transport, volume and the navigation toggles.
+ *   3. The pop-out / mini-player is gone: it opens a second browser window, and a phone
+ *      has no second window.
+ *   4. The "you're viewing the files directly from disk" notice is suppressed - inside
+ *      the app it is never true, and on the web it never appears.
+ *
+ * State comes from the page's own window.__dbg API where available and from the media
+ * element's events otherwise, so playback survives that API changing.
  */
 (function () {
   "use strict";
   if (window.__wr) return;                       // already injected
 
   var host = window.WorldRadioJs;
+  var doc = document;
+  var $ = function (sel) { return doc.querySelector(sel); };
 
-  function report(message) {
-    try { if (host && host.log) host.log(String(message)); } catch (e) { /* shell gone */ }
+  function report(msg) {
+    try { if (host && host.log) host.log(String(msg)); } catch (e) { /* shell gone */ }
   }
+
+  /* ---------------------------------------------------------------- state ---- */
 
   function info() {
     var cur = null, playing = false, error = null;
@@ -41,63 +50,461 @@
     return { cur: cur, playing: playing, error: error };
   }
 
-  function click(selector) {
-    var el = document.querySelector(selector);
-    if (el && !el.disabled) { el.click(); return true; }
-    return false;
-  }
-
-  window.__wr = {
-    play: function () {
-      // the page's own play control resumes the current station
-      if (!click("#bPlay")) report("play: no #bPlay control on this page");
-    },
-    pause: function () {
-      var d = window.__dbg;
-      if (d && typeof d.stop === "function") {
-        try { d.stop(); return; } catch (e) { /* fall back to the button */ }
-      }
-      if (!click("#bStop")) report("pause: no stop control on this page");
-    },
-    toggle: function () { if (info().playing) { window.__wr.pause(); } else { window.__wr.play(); } },
-    info: info
-  };
-
-  var last = null;
-  function push(force) {
+  var lastKey = null;
+  function pushState(force) {
     var s = info();
     var key = (s.playing ? "1" : "0") + "|" + (s.cur || "") + "|" + (s.error || "");
-    if (!force && key === last) return;
-    last = key;
+    if (!force && key === lastKey) return;
+    lastKey = key;
     try {
       if (host && host.state) host.state(!!s.playing, s.cur || "", s.error || "");
     } catch (e) { /* shell gone */ }
   }
 
-  setInterval(push, 1000);                       // cheap poll; only reports on change
+  /* ------------------------------------------------- controls on the page ---- */
+  /* Every action below drives a control the page already owns. Nothing is duplicated. */
 
-  // Media events do not bubble, but they do take the capture path to the document.
-  ["play", "playing", "pause", "ended", "stalled", "error", "suspend"].forEach(function (ev) {
-    document.addEventListener(ev, function () {
-      setTimeout(function () { push(true); }, 250);   // let the page settle first
+  /* Station streams and homepages belong in the phone's browser. Left alone they are
+     either silently blocked (target="_blank" with no second window) or they replace the
+     player with a web page - both wrong. */
+  function openExternal(url) {
+    if (!url) return;
+    try {
+      if (host && host.url) { host.url(String(url)); return; }   // native browser
+    } catch (e) { /* fall through to the web behaviour */ }
+    var w = window.__wrRealOpen ? window.__wrRealOpen(url, "_blank") : null;
+    if (!w) { try { location.href = url; } catch (e2) { } }
+  }
+
+  function press(sel) {
+    var el = $(sel);
+    if (el && !el.disabled) { el.click(); return true; }
+    return false;
+  }
+
+  function focusSearch() {
+    var q = $("#q");
+    if (!q) return;
+    q.scrollIntoView({ behavior: "smooth", block: "center" });
+    q.focus({ preventScroll: true });
+  }
+
+  function setVolume(v) {
+    var el = $("#vol");
+    if (!el) return;
+    el.value = String(v);
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  /* ------------------------------------------------------- pop-out removal ---- */
+
+  function killPopOut() {
+    var css = doc.createElement("style");
+    css.textContent =
+      "#btnPop,#dock{display:none !important}" +
+      /* the page's own bar stays in the layout as a hidden control plane */
+      "#bar{display:none !important}" +
+      /* keep room for the sheet so the list is never trapped behind it */
+      "body{padding-bottom:0 !important}";
+    (doc.head || doc.documentElement).appendChild(css);
+
+    var realOpen = window.open;
+    window.__wrRealOpen = realOpen;
+    window.open = function (url) {
+      if (String(url || "").indexOf("popout") !== -1) return null;   // never a 2nd window
+      if (/^https?:/i.test(String(url || ""))) { openExternal(url); return null; }
+      return realOpen.apply(window, arguments);
+    };
+  }
+
+  /* The page's own buttons for a station's stream and homepage are plain target="_blank"
+     links, which a WebView with no second window drops on the floor. Catch them here. */
+  function externalLinks() {
+    doc.addEventListener("click", function (ev) {
+      var a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
+      if (!a) return;
+      var href = a.getAttribute("href") || "";
+      if (!/^https?:/i.test(href)) return;          // leave #anchors and mailto alone
+      ev.preventDefault();
+      ev.stopPropagation();
+      openExternal(href);
     }, true);
-  });
+  }
 
-  window.addEventListener("beforeunload", function () {
-    try { if (host && host.state) host.state(false, "", ""); } catch (e) { /* ignore */ }
-  });
+  /* ---------------------------------------------- the disk-notice suppressor ---- */
 
-  // ---- desktop-only affordances and touch behaviour -------------------------
-  var style = document.createElement("style");
-  style.textContent = [
-    "#btnPop{display:none !important}",                 // no second window on a phone
-    "*{-webkit-tap-highlight-color:rgba(255,62,165,.22)}",
-    "button,.btn,.play,.iconbtn{touch-action:manipulation}",  // kill double-tap zoom lag
-    "body{overscroll-behavior:none}"                    // no rubber-band pull-to-refresh
-  ].join("");
-  (document.head || document.documentElement).appendChild(style);
+  var DISK_NOTICE = /viewing the files directly from disk/i;
 
-  push(true);
-  report("shim ready | stations=" +
-    (window.__dbg && typeof window.__dbg.ALL === "function" ? window.__dbg.ALL() : "?"));
+  function suppressDiskNotice() {
+    var notice = $("#notice");
+    if (!notice) return;
+    var css = doc.createElement("style");
+    css.textContent = "#notice.wr-muted{display:none !important}";
+    (doc.head || doc.documentElement).appendChild(css);
+
+    var check = function () {
+      var hit = DISK_NOTICE.test(notice.textContent || "");
+      notice.classList.toggle("wr-muted", hit);
+    };
+    check();
+    /* the page can raise or replace this notice at any time, so watch it rather than
+       guessing when it fires. Other notices (unplayable station etc.) still show. */
+    new MutationObserver(check).observe(notice, {
+      childList: true, characterData: true, subtree: true, attributes: true
+    });
+  }
+
+  /* ------------------------------------------------------------ the sheet ---- */
+
+  var SHEET = { collapsed: true, open: false };
+
+  function buildSheet() {
+    var bar = $("#bar");
+    if (!bar) return null;
+
+    var css = doc.createElement("style");
+    css.textContent = [
+      "html{-webkit-text-size-adjust:100%}",
+      "#wrSheet{position:fixed;left:0;right:0;bottom:0;z-index:70;",
+      "  background:#12131e;",
+      "  border-top:3px solid var(--cyan);box-shadow:0 -10px 40px rgba(0,0,0,.6);",
+      "  transform:translateY(var(--wr-y,0px));will-change:transform;",
+      "  padding-bottom:env(safe-area-inset-bottom,0px);touch-action:none;}",
+      "#wrSheet.wr-anim{transition:transform .26s cubic-bezier(.22,.61,.36,1)}",
+      "#wrSheet.wr-drag{transition:none}",
+      /* handle */
+      ".wr-grab{display:flex;align-items:center;justify-content:center;height:22px;",
+      "  cursor:grab;touch-action:none}",
+      ".wr-grab i{width:44px;height:4px;border-radius:3px;background:var(--line);display:block}",
+      ".wr-grab b{position:absolute;right:14px;font-size:13px;color:var(--mut);",
+      "  transition:transform .26s ease;transform:rotate(180deg)}",
+      "#wrSheet.wr-open .wr-grab b{transform:rotate(0)}",
+      /* collapsed row */
+      ".wr-row{display:flex;align-items:center;gap:11px;padding:6px 12px 12px;touch-action:none}",
+      ".wr-art{width:46px;height:46px;border-radius:10px 4px 10px 4px;object-fit:cover;",
+      "  border:1px solid var(--line);background:#0b0b12;flex:0 0 auto}",
+      ".wr-txt{min-width:0;flex:1}",
+      ".wr-name{font-weight:800;font-size:14.5px;white-space:nowrap;overflow:hidden;",
+      "  text-overflow:ellipsis}",
+      ".wr-meta{font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;",
+      "  text-overflow:ellipsis;margin-top:2px}",
+      ".wr-chip{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;",
+      "  border:1px solid var(--line);border-radius:999px;padding:2px 7px;color:var(--mut);flex:0 0 auto}",
+      ".wr-chip.wr-live{color:var(--cyan);border-color:var(--cyan)}",
+      /* the round transport button */
+      ".wr-round{flex:0 0 auto;width:46px;height:46px;border-radius:50%;border:2px solid var(--pink);",
+      "  background:var(--pink);color:#1a0312;font-size:17px;font-weight:900;cursor:pointer;",
+      "  display:flex;align-items:center;justify-content:center;padding:0}",
+      ".wr-round:active{transform:scale(.94)}",
+      /* expanded view */
+      ".wr-full{max-height:0;overflow:hidden;transition:max-height .26s cubic-bezier(.22,.61,.36,1)}",
+      "#wrSheet.wr-open .wr-full{max-height:var(--wr-full,60vh);overflow-y:auto;touch-action:pan-y}",
+      ".wr-hero{display:flex;gap:14px;align-items:center;padding:4px 14px 12px}",
+      ".wr-hero img{width:88px;height:88px;border-radius:14px 6px 14px 6px;object-fit:cover;",
+      "  border:2px solid var(--cyan);background:#0b0b12;flex:0 0 auto}",
+      ".wr-hero .wr-h1{font-weight:900;font-size:19px;line-height:1.15;cursor:pointer}",
+      ".wr-hero .wr-sub{font-size:12px;color:var(--mut);margin-top:5px;line-height:1.45}",
+      ".wr-transport{display:flex;align-items:center;gap:10px;padding:0 14px 10px}",
+      ".wr-tbtn{flex:1;border:2px solid var(--line);background:rgba(255,255,255,.04);color:inherit;",
+      "  border-radius:12px;padding:11px 8px;font-size:13px;font-weight:800;cursor:pointer}",
+      ".wr-tbtn:active{transform:scale(.97)}",
+      ".wr-vol{display:flex;align-items:center;gap:10px;padding:0 14px 12px}",
+      ".wr-vol input{flex:1;accent-color:var(--pink);height:22px}",
+      ".wr-vol span{font-size:11px;color:var(--mut);min-width:38px;text-align:right}",
+      ".wr-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;padding:2px 14px 16px}",
+      ".wr-nav button{border:2px solid var(--line);background:rgba(255,255,255,.03);color:inherit;",
+      "  border-radius:12px;padding:11px 4px 9px;font-size:10.5px;font-weight:800;cursor:pointer;",
+      "  display:flex;flex-direction:column;align-items:center;gap:5px;line-height:1}",
+      ".wr-nav button i{font-style:normal;font-size:17px}",
+      ".wr-nav button:active{transform:scale(.96);border-color:var(--cyan)}",
+      ".wr-sep{height:1px;background:var(--line);margin:0 14px 12px;opacity:.5}"
+    ].join("");
+    (doc.head || doc.documentElement).appendChild(css);
+
+    var sheet = doc.createElement("div");
+    sheet.id = "wrSheet";
+    sheet.innerHTML =
+      '<div class="wr-grab" data-wr="grab"><i></i><b>⌄</b></div>' +
+      '<div class="wr-row" data-wr="row">' +
+      '  <img class="wr-art" id="wrArt" alt="">' +
+      '  <div class="wr-txt">' +
+      '    <div class="wr-name" id="wrName">Pick a station</div>' +
+      '    <div class="wr-meta" id="wrMeta"></div>' +
+      '  </div>' +
+      '  <span class="wr-chip" id="wrChip"></span>' +
+      '  <button class="wr-round" data-wr="play" title="Play or pause">▶</button>' +
+      '</div>' +
+      '<div class="wr-full">' +
+      '  <div class="wr-hero">' +
+      '    <img id="wrBigArt" alt="">' +
+      '    <div style="min-width:0">' +
+      '      <div class="wr-h1" id="wrBigName">Pick a station</div>' +
+      '      <div class="wr-sub" id="wrBigMeta"></div>' +
+      '    </div>' +
+      '  </div>' +
+      '  <div class="wr-transport">' +
+      '    <button class="wr-tbtn" data-wr="details">ℹ Details</button>' +
+      '    <button class="wr-tbtn" data-wr="stop">⏹ Stop</button>' +
+      '    <button class="wr-tbtn" data-wr="site">🌐 Website</button>' +
+      '  </div>' +
+      '  <div class="wr-vol"><input type="range" id="wrVol" min="0" max="1" step="0.01"><span id="wrVolPct">—</span></div>' +
+      '  <div class="wr-sep"></div>' +
+      '  <div class="wr-nav">' +
+      '    <button data-wr="search"><i>🔎</i>Search</button>' +
+      '    <button data-wr="facets"><i>🎚</i>Filters</button>' +
+      '    <button data-wr="fav"><i>★</i>Favourites</button>' +
+      '    <button data-wr="local"><i>📍</i>Local</button>' +
+      '    <button data-wr="playable"><i>✓</i>Playable</button>' +
+      '    <button data-wr="reset"><i>↺</i>Reset</button>' +
+      '    <button data-wr="top"><i>▲</i>Top</button>' +
+      '    <button data-wr="viz"><i>🎛</i>Visual</button>' +
+      '  </div>' +
+      '</div>';
+    doc.body.appendChild(sheet);
+    return sheet;
+  }
+
+  /* ------------------------------------------------------- sheet behaviour ---- */
+
+  function sheetController(sheet) {
+    var MAX = 0;                                  // px the sheet travels when collapsed
+    var y = -1, dragging = false, startY = 0, startOffset = 0;
+
+    function measure() {
+      /* The sheet is laid out as a full-height panel pinned to the bottom, then translated
+         down so that only the grabber + collapsed row remain on screen. Without an explicit
+         height the collapsed state would slide the whole sheet off the bottom edge - which
+         is exactly the bug this replaces. */
+      var grab = sheet.querySelector(".wr-grab");
+      var row = sheet.querySelector(".wr-row");
+      var collapsedH = (grab ? grab.offsetHeight : 22) + (row ? row.offsetHeight : 66);
+      var expandedH = Math.min(Math.round(window.innerHeight * 0.62), 640);
+      sheet.style.height = expandedH + "px";
+      sheet.style.setProperty("--wr-full", Math.max(0, expandedH - collapsedH) + "px");
+      MAX = Math.max(0, expandedH - collapsedH);
+      apply(SHEET.open ? 0 : MAX, false);
+    }
+
+    function apply(offset, animate) {
+      sheet.style.setProperty("--wr-y", offset + "px");
+      y = offset;
+    }
+
+    function setOpen(open, animate) {
+      SHEET.open = open;
+      sheet.classList.toggle("wr-open", open);
+      if (animate !== false) {
+        sheet.classList.add("wr-anim");
+        window.setTimeout(function () { sheet.classList.remove("wr-anim"); }, 300);
+      }
+      apply(open ? 0 : MAX, animate);
+    }
+
+    function onDown(ev) {
+      if (!ev.isPrimary) return;
+      if (ev.target.closest("button,input")) return;      // never steal a tap
+      dragging = true;
+      startY = ev.clientY; startOffset = y < 0 ? (SHEET.open ? 0 : MAX) : y;
+      sheet.classList.remove("wr-anim");
+      sheet.classList.add("wr-drag");
+      try { ev.target.closest("[data-wr]").setPointerCapture(ev.pointerId); } catch (e) { }
+    }
+
+    function onMove(ev) {
+      if (!dragging) return;
+      var dy = ev.clientY - startY;
+      var next = Math.min(MAX, Math.max(0, startOffset + dy));
+      apply(next, false);
+      ev.preventDefault();
+    }
+
+    function onUp(ev) {
+      if (!dragging) return;
+      dragging = false;
+      sheet.classList.remove("wr-drag");
+      var dy = ev.clientY - startY;
+      /* A tap toggles; a real drag is decided by its direction. Keep it this simple: the
+         sheet must never feel like it argued with you. */
+      if (Math.abs(dy) < 24) { setOpen(!SHEET.open); return; }
+      setOpen(dy < 0);
+    }
+
+    var grab = sheet.querySelector('[data-wr="grab"]');
+    var row = sheet.querySelector('[data-wr="row"]');
+    [grab, row].forEach(function (el) {
+      el.addEventListener("pointerdown", onDown, { passive: true });
+    });
+    doc.addEventListener("pointermove", onMove, { passive: false });
+    doc.addEventListener("pointerup", onUp, { passive: true });
+    doc.addEventListener("pointercancel", onUp, { passive: true });
+
+    window.addEventListener("resize", measure);
+    // keyboard/AT access to the same states
+    sheet.querySelector('[data-wr="grab"]').addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); setOpen(!SHEET.open); }
+    });
+    sheet.querySelector('[data-wr="grab"]').tabIndex = 0;
+
+    sheet.addEventListener("click", function (ev) {
+      var b = ev.target.closest("[data-wr]");
+      if (!b) return;
+      var act = b.getAttribute("data-wr");
+      /* Taps on the handle / row are handled by the gesture code on pointerup - acting on
+         the follow-up click as well made every drag undo itself. */
+      if (act === "grab" || act === "row") return;
+      if (act === "play") { press("#bPlay"); pushState(true); return; }
+      if (act === "stop") { press("#bStop"); pushState(true); return; }
+      if (act === "details") { press("#bName"); return; }
+      if (act === "site") { press("#btnBarSite"); return; }
+      if (act === "search") { focusSearch(); setOpen(false); return; }
+      if (act === "facets") { press("#btnFacets"); setOpen(false); return; }
+      if (act === "fav") { press("#btnFav"); setOpen(false); return; }
+      if (act === "local") { press("#btnLocal"); setOpen(false); return; }
+      if (act === "playable") { press("#btnPlayable"); setOpen(false); return; }
+      if (act === "reset") { press("#btnReset"); setOpen(false); return; }
+      if (act === "top") { press("#toTop"); setOpen(false); return; }
+      if (act === "viz") { press("#btnViz"); return; }
+    });
+
+    var vol = sheet.querySelector("#wrVol");
+    vol.addEventListener("input", function () {
+      setVolume(vol.value);
+      sheet.querySelector("#wrVolPct").textContent = Math.round(vol.value * 100) + "%";
+    });
+
+    measure();
+    return { measure: measure, setOpen: setOpen };
+  }
+
+  /* ------------------------------------------------------ mirror page state ---- */
+
+  function mirror(ctl) {
+    var srcName = $("#bName"), srcMeta = $("#bMeta"), srcArt = $("#bArt"),
+        srcChip = $("#bState"), srcVol = $("#vol");
+    var out = {
+      name: $("#wrName"), meta: $("#wrMeta"), art: $("#wrArt"), chip: $("#wrChip"),
+      bigName: $("#wrBigName"), bigMeta: $("#wrBigMeta"), bigArt: $("#wrBigArt"),
+      vol: $("#wrVol"), volPct: $("#wrVolPct")
+    };
+    var seen = {};
+
+    function text(node) { return node ? (node.textContent || "").trim() : ""; }
+
+    function sync() {
+      var name = text(srcName) || "Pick a station";
+      var meta = text(srcMeta);
+      var art = srcArt ? srcArt.getAttribute("src") : "";
+      var chip = text(srcChip);
+      var vol = srcVol ? srcVol.value : "";
+
+      if (seen.name !== name) {
+        seen.name = name;
+        out.name.textContent = name;
+        out.bigName.textContent = name;
+        doc.title = name === "Pick a station" ? doc.title : name + " — MODDYS World Radio";
+      }
+      if (seen.meta !== meta) {
+        seen.meta = meta;
+        out.meta.textContent = meta;
+        out.bigMeta.textContent = meta;
+      }
+      if (seen.art !== art && art) {
+        seen.art = art;
+        out.art.src = art;
+        out.bigArt.src = art;
+      }
+      if (seen.chip !== chip) {
+        seen.chip = chip;
+        out.chip.textContent = chip;
+      }
+      if (seen.vol !== vol && vol !== "") {
+        seen.vol = vol;
+        if (doc.activeElement !== out.vol) out.vol.value = vol;
+        out.volPct.textContent = Math.round(parseFloat(vol) * 100) + "%";
+      }
+    }
+
+    // the media element fires these on the document's capture path
+    ["play", "playing", "pause", "ended", "error", "volumechange"].forEach(function (ev) {
+      doc.addEventListener(ev, function () { setTimeout(sync, 120); }, true);
+    });
+
+    var obs = new MutationObserver(function () { sync(); });
+    [srcName, srcMeta, srcChip].forEach(function (n) {
+      if (n) obs.observe(n, { childList: true, characterData: true, subtree: true });
+    });
+    if (srcArt) obs.observe(srcArt, { attributes: true, attributeFilter: ["src"] });
+
+    sync();
+    return sync;
+  }
+
+  /* -------------------------------------------------------------- assemble ---- */
+
+  killPopOut();
+  externalLinks();
+  suppressDiskNotice();
+
+  var sheet = buildSheet();
+  if (sheet) {
+    var ctl = sheetController(sheet);
+    var syncNow = mirror(ctl);
+
+    // one cheap ticker drives both the sheet mirror and the shell's own state report
+    var tick = function () {
+      syncNow();
+      var s = info();
+      var playing = s.playing;
+      var chip = $("#wrChip");
+      if (chip) {
+        chip.textContent = playing ? "LIVE" : (s.error ? "ERROR" : "IDLE");
+        chip.className = "wr-chip" + (playing ? " wr-live" : "");
+      }
+      pressLabel(playing);
+      pushState(false);
+    };
+    var playBtn = sheet.querySelector('[data-wr="play"]');
+    function pressLabel(playing) {
+      var label = playing ? "⏸" : "▶";
+      if (playBtn && playBtn.textContent !== label) playBtn.textContent = label;
+    }
+    setInterval(tick, 1000);
+    tick();
+
+    // the page sets the mini-player's bar visible when a station is chosen
+    var visTimer = setInterval(function () {
+      var bar = $("#bar");
+      if (!bar) return;
+      var shown = bar.style.display && bar.style.display !== "none";
+      if (shown !== SHEET.visible) {
+        SHEET.visible = shown;
+        sheet.style.display = shown ? "block" : "none";
+        ctl.measure();
+      }
+    }, 700);
+    SHEET.visible = true;
+
+    window.addEventListener("beforeunload", function () {
+      clearInterval(tick);
+      clearInterval(visTimer);
+      try { if (host && host.state) host.state(false, "", ""); } catch (e) { }
+    });
+
+    report("shim ready | station=" + (info().cur || "none"));
+  } else {
+    report("shim: no #bar found - player sheet not built");
+  }
+
+  /* The shell drives playback through these; keep the names stable. */
+  window.__wr = {
+    play: function () { press("#bPlay"); },
+    pause: function () {
+      var d = window.__dbg;
+      if (d && typeof d.stop === "function") { try { d.stop(); return; } catch (e) { } }
+      press("#bStop");
+    },
+    toggle: function () { if (info().playing) { window.__wr.pause(); } else { window.__wr.play(); } },
+    info: info,
+    sheet: function () { return SHEET; }
+  };
 })();
