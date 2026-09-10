@@ -4,6 +4,6 @@
     <string name="channel_name">Playback</string>
     <string name="channel_desc">Keeps the radio stream playing while the app is in the background</string>
     <string name="notification_tagline">MODDYS World Radio — SPRAY IT LOUD</string>
-    <string name="notification_paused">Paused — another app needed the sound. Tap play to reconnect</string>
+    <string name="notification_other">Another app is playing — tap play to take the radio back</string>
     <string name="no_webview">This device has no working Android System WebView, so the radio cannot run.\n\nOpen the Play Store and install or update "Android System WebView" (on some devices it is called "Google Chrome" that provides it), then open this app again. Devices without Google Play can use a browser that supplies a WebView instead.</string>
 </resources>

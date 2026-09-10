@@ -9,14 +9,18 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.drawable.Icon;
 import android.media.AudioAttributes;
-import android.media.AudioFocusRequest;
 import android.media.AudioManager;
+import android.media.AudioPlaybackConfiguration;
 import android.media.MediaMetadata;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.os.PowerManager;
+import android.os.Process;
+import android.util.Log;
 
 /**
  * Keeps the stream alive while the app is backgrounded or the screen is off, and owns
@@ -30,12 +34,23 @@ import android.os.PowerManager;
  * the state the page reports. Live radio has no seek, so pause and stop are the same
  * thing: the stream is simply disconnected.
  *
- * It does own audio focus, because that is the part the page cannot do: asking the system
- * for the output, and telling the page what the system decided. The decision itself still
- * lives in the page shell (window.__wr.focus), so there is one place that knows what
- * "paused" means.
+ * <p><b>It does not ask for audio focus.</b> That is deliberate, and it is the fix for
+ * "another app wants the sound" appearing when nothing else was playing. The WebView's
+ * engine is what actually plays the stream, and it requests focus itself, exactly as any
+ * media app does. Asking a second time from here created a second focus client inside this
+ * one app: the framework then told us we had lost focus to ourselves, and on several
+ * devices that arrives as a refusal or a permanent loss the moment playback starts. The
+ * symptoms were a stream that died after a fraction of a second, or a dialog about another
+ * app that was not there.
+ *
+ * <p>What it does instead is watch - {@code registerAudioPlaybackCallback}, filtered to
+ * other apps' UIDs, so this app's own WebView playback can never be mistaken for a
+ * competitor. That observation drives the page's "another app is playing" choice without
+ * taking anything away from anyone.
  */
 public class PlaybackService extends Service {
+
+    private static final String TAG = "WRPlayback";
 
     static final String ACTION_PLAYING = "com.moddys.worldradio.action.PLAYING";
     static final String ACTION_STOPPED = "com.moddys.worldradio.action.STOPPED";
@@ -43,7 +58,7 @@ public class PlaybackService extends Service {
     static final String ACTION_RESUME = "com.moddys.worldradio.action.RESUME";
     static final String EXTRA_STATION = "station";
 
-    /** Radio: it is music, and it should be treated as the thing the user is listening to. */
+    /** Radio: it is music, and the session should look like music to the system. */
     private static final AudioAttributes ATTRS = new AudioAttributes.Builder()
             .setUsage(AudioAttributes.USAGE_MEDIA)
             .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
@@ -56,12 +71,11 @@ public class PlaybackService extends Service {
     private MediaSession session;
     private PowerManager.WakeLock wake;
     private AudioManager audio;
-    private AudioFocusRequest focusRequest;
+    private AudioManager.AudioPlaybackCallback playbackCb;
     private String station;
     private String pauseText;         // non-null while sitting in the paused state
     private boolean foreground = false;
-    private boolean hasFocus = false;
-    private boolean pausedByFocus = false;
+    private boolean otherAppPlaying = false;
 
     @Override
     public void onCreate() {
@@ -76,21 +90,12 @@ public class PlaybackService extends Service {
         if (nm != null) nm.createNotificationChannel(channel);
 
         audio = getSystemService(AudioManager.class);
-        focusRequest = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-                .setAudioAttributes(ATTRS)
-                /* the radio ducks itself under a navigation prompt, so the system should not
-                   pause it on our behalf */
-                .setWillPauseWhenDucked(false)
-                .setAcceptsDelayedFocusGain(false)
-                .setOnAudioFocusChangeListener(new FocusListener())
-                .build();
 
         session = new MediaSession(this, "WorldRadio");
         session.setPlaybackToLocal(ATTRS);
         session.setCallback(new MediaSession.Callback() {
             @Override
             public void onPlay() {
-                if (!requestFocus()) tellFocus("refused");
                 tellPage("play");
             }
 
@@ -105,6 +110,8 @@ public class PlaybackService extends Service {
             }
         });
         session.setActive(true);
+
+        watchOtherApps();
 
         PowerManager pm = getSystemService(PowerManager.class);
         if (pm != null) {
@@ -126,22 +133,20 @@ public class PlaybackService extends Service {
             return START_NOT_STICKY;
         }
 
-        /* The user asked for the radio back (from the notification, the lock screen or the
-           app): take the output first, and only start if the system agrees. */
+        /* The user asked for the radio back, from the notification, the lock screen or the
+           app. Nothing to negotiate: the page plays, and the WebView's own focus request
+           handles the system from there. */
         if (ACTION_RESUME.equals(action)) {
-            if (!requestFocus()) tellFocus("refused");
             tellPage("play");
             return START_NOT_STICKY;
         }
 
         // The page reports it has stopped on its own (user tapped pause in the app).
         if (ACTION_STOPPED.equals(action)) {
-            if (pausedByFocus) {
-                /* We stopped it because someone else needed the output. Leave the
-                   notification up, offering to reconnect, instead of vanishing on the
-                   user mid-call. */
-                pausedByFocus = false;
-                showPaused(getString(R.string.notification_paused));
+            if (otherAppPlaying) {
+                /* Something else is playing and the page stopped for it. Keep the
+                   notification up, offering the way back, instead of vanishing. */
+                showPaused(getString(R.string.notification_other));
             } else {
                 teardown();
             }
@@ -151,13 +156,6 @@ public class PlaybackService extends Service {
         if (ACTION_PLAYING.equals(action)) {
             String s = intent.getStringExtra(EXTRA_STATION);
             if (s != null && !s.trim().isEmpty()) station = s.trim();
-
-            /* Focus is advisory here, NOT a gate. Android does not enforce audio focus, and
-               on some devices the request comes back non-granted when nothing else is
-               playing at all. v1.4.0 refused to play in that case and looped the user
-               through a dialog that could never succeed - so: tell the page (it says so
-               once) and play anyway. The user is in charge of who gets the sound. */
-            if (!requestFocus()) tellFocus("refused");
             showPlaying();
             return START_NOT_STICKY;
         }
@@ -180,7 +178,14 @@ public class PlaybackService extends Service {
     @Override
     public void onDestroy() {
         releaseWake();
-        abandonFocus();
+        if (audio != null && playbackCb != null) {
+            try {
+                audio.unregisterAudioPlaybackCallback(playbackCb);
+            } catch (Throwable t) {
+                Log.w(TAG, "unregister playback callback: " + t);
+            }
+            playbackCb = null;
+        }
         if (session != null) {
             session.setActive(false);
             session.release();
@@ -193,6 +198,59 @@ public class PlaybackService extends Service {
         return null;
     }
 
+    /* ------------------------------------------------------- who else is playing ---- */
+
+    /**
+     * Watch what else is playing, without competing for anything. The callback is filtered
+     * to other apps' UIDs: this app's own playback (the WebView) shares our UID, so it can
+     * never be reported as a competing app, which is exactly the false positive that used
+     * to produce "another app wants the sound" on a device where nothing else was playing.
+     */
+    private void watchOtherApps() {
+        if (audio == null || Build.VERSION.SDK_INT < 26) return;
+        try {
+            playbackCb = new AudioManager.AudioPlaybackCallback() {
+                @Override
+                public void onPlaybackConfigChanged(java.util.List<AudioPlaybackConfiguration> configs) {
+                    boolean other = false;
+                    if (configs != null) {
+                        for (AudioPlaybackConfiguration c : configs) {
+                            if (c == null || !c.isActive()) continue;
+                            int uid;
+                            try {
+                                uid = c.getClientUid();
+                            } catch (Throwable t) {
+                                continue;                    // not ours to read: skip it
+                            }
+                            if (uid > 0 && uid != Process.myUid()) {
+                                other = true;
+                                break;
+                            }
+                        }
+                    }
+                    setOtherAppPlaying(other);
+                }
+            };
+            audio.registerAudioPlaybackCallback(playbackCb, new Handler(Looper.getMainLooper()));
+        } catch (Throwable t) {
+            /* Some devices restrict this. Nothing is lost: the choice is simply never
+               offered, and the notification still carries Play and Stop. */
+            Log.w(TAG, "cannot watch other apps' playback: " + t);
+            playbackCb = null;
+        }
+    }
+
+    private void setOtherAppPlaying(boolean other) {
+        if (other == otherAppPlaying) return;
+        otherAppPlaying = other;
+        Log.i(TAG, "another app " + (other ? "started" : "stopped") + " playing");
+        /* The page owns the decision; it knows whether the user is looking at the app and
+           whether anything was actually playing to interrupt. */
+        tellFocus(other ? "otherApp" : "otherAppGone");
+    }
+
+    /* ------------------------------------------------------------------ states ---- */
+
     /** Ask the page to disconnect, then take the shell down regardless of its reply. */
     private void pauseAndStop() {
         tellPage("pause");
@@ -201,67 +259,15 @@ public class PlaybackService extends Service {
 
     private void teardown() {
         releaseWake();
-        abandonFocus();
         pauseText = null;
-        pausedByFocus = false;
         setPlaybackState(PlaybackState.STATE_STOPPED);
         stopForegroundCompat();
         stopSelf();
     }
 
-    /* ---------------------------------------------------------- audio focus ---- */
-
-    /**
-     * Ask the system to make this app the thing the user is hearing. False means another
-     * app holds the output, in which case the radio stays quiet rather than playing over it.
-     */
-    private boolean requestFocus() {
-        if (audio == null || focusRequest == null) return true;   // no AudioManager: never block playback
-        if (hasFocus) return true;
-        hasFocus = audio.requestAudioFocus(focusRequest) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
-        return hasFocus;
-    }
-
-    private void abandonFocus() {
-        if (hasFocus && audio != null && focusRequest != null) {
-            audio.abandonAudioFocusRequest(focusRequest);
-        }
-        hasFocus = false;
-    }
-
-    /** What the system decided, forwarded to the page - which owns what to do about it. */
-    private class FocusListener implements AudioManager.OnAudioFocusChangeListener {
-        @Override
-        public void onAudioFocusChange(int change) {
-            switch (change) {
-                case AudioManager.AUDIOFOCUS_GAIN:
-                    hasFocus = true;
-                    tellFocus("gain");              // the page resumes if it armed a resume
-                    break;
-
-                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
-                    tellFocus("duck");              // a prompt wants to be heard over us
-                    break;
-
-                case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
-                    pausedByFocus = true;           // a call: we will be wanted back
-                    tellFocus("lossTransient");
-                    break;
-
-                case AudioManager.AUDIOFOCUS_LOSS:
-                default:
-                    pausedByFocus = true;           // someone else owns the output now
-                    hasFocus = false;
-                    tellFocus("loss");
-                    break;
-            }
-        }
-    }
-
-    /** The state to show while the page is playing and the output is ours. */
+    /** The state to show while the page is playing. */
     private void showPlaying() {
         pauseText = null;
-        pausedByFocus = false;
         session.setMetadata(metadata(getString(R.string.notification_tagline)));
         startForegroundCompat();
         acquireWake();
@@ -269,9 +275,8 @@ public class PlaybackService extends Service {
     }
 
     /**
-     * Keep the notification, drop the stream. A focus loss must not make the player vanish:
-     * the user still needs a way back to it, and a phone call is not a decision to stop
-     * listening.
+     * Keep the notification, drop the stream. Losing the output must not make the player
+     * vanish: the user still needs a way back to it.
      */
     private void showPaused(String why) {
         pauseText = why;

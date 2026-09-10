@@ -728,86 +728,44 @@
     if (sheetCtl) sheetCtl.measure();
   }
 
-  /* ---------------------------------------------------------- audio focus ---- */
+  /* ------------------------------------------------- who gets the sound ----
 
-  /* Audio focus policy lives here rather than in the service, because this is the part
-     that can be tested against the real page. Android reports what the system decided:
-       "gain"          the other app let go - unduck, and reconnect if we paused for it
-       "duck"          something wants to be heard over us (a navigation prompt)
-       "lossTransient" a call or another player, briefly - pause, and arm a resume
-       "loss"          another app has taken the output for good - pause, do not fight back
-     Resuming live radio means reconnecting the stream, which is exactly what the page's
-     own play button does (it replays the station that is current). */
-  var FOCUS = { armedResume: false, ducked: false, duckBase: null,
-                lastKind: "", refused: false, needsTap: false, askPending: false };
+     The service does not ask Android for audio focus, and this shell does not pretend to
+     own the output. That is the fix for "another app wants the sound" arriving when
+     nothing else was playing: the WebView's engine - which is what actually plays the
+     stream - requests focus itself, exactly as any media app does. The service asking for
+     it as well made one app look like two, the framework reported a loss or a refusal back
+     to us, and playback died a fraction of a second after it started.
 
-  /* Ducking goes through the page's own volume control. Its audio element is a detached
-     `new Audio()` that nothing outside the page can reach, but the slider's handler
-     applies a change to the live element immediately - so lowering and restoring the
-     slider is a duck the stream actually hears. The user's own setting is only ever
-     lowered for as long as something else needs to be heard. */
-  function duck(on) {
-    var el = $("#vol");
-    if (!el) return null;
-    if (on) {
-      if (FOCUS.duckBase === null) FOCUS.duckBase = Number(el.value);
-      el.value = String(Math.max(0, FOCUS.duckBase * 0.25));
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-    } else if (FOCUS.duckBase !== null) {
-      el.value = String(FOCUS.duckBase);
-      el.dispatchEvent(new Event("input", { bubbles: true }));
-      FOCUS.duckBase = null;
-    }
-    FOCUS.ducked = !!on;
-    return Number(el.value);
-  }
+     So the service only *watches* now, and it filters out this app's own audio by UID. The
+     only things it can tell us are honest:
+       "otherApp"      another app genuinely started playing
+       "otherAppGone"  it stopped again
+     Nothing else arrives, and nothing here second-guesses the system. */
+  var FOCUS = { lastKind: "", other: false, needsTap: false, askPending: false };
 
   function focusEvent(kind) {
     var wasPlaying = info().playing;
     FOCUS.lastKind = kind;
 
-    /* The system refused us the output. That is NOT a reason to stop playing: Android does
-       not enforce focus, and on some devices the request comes back non-granted even when
-       nothing else is playing at all. v1.4.0 treated it as a gate and looped the user
-       through a dialog that could never succeed. So: keep playing, say so once, and leave
-       the user in charge. */
-    if (kind === "refused") {
-      FOCUS.refused = true;
-      note("Another app is playing too \u2014 the radio is sharing the sound.");
-      return { refused: true, playing: wasPlaying };
-    }
-
-    if (kind === "duck") {
-      if (!FOCUS.ducked) duck(true);
-      return { ducked: true, playing: wasPlaying };
-    }
-
-    if (kind === "gain") {
-      FOCUS.refused = false;
-      if (FOCUS.ducked) duck(false);
-      var resumed = false;
-      if (FOCUS.armedResume) {
-        FOCUS.armedResume = false;
-        if (PLAYFAIL.gestureNeeded) {
-          /* This device wants a real tap. Firing play() here is what produced the
-             "browser blocked playback" toast on exactly these tablets, so leave it paused
-             with the way back on screen instead. */
-          FOCUS.needsTap = true;
-        } else {
-          playPlayback();
-          resumed = true;
-        }
+    if (kind === "otherApp") {
+      FOCUS.other = true;
+      /* Only interrupt something that was actually playing: if the radio was already
+         stopped there is nothing to ask the user about. */
+      if (wasPlaying) {
+        pausePlayback();
+        askContention();
       }
-      return { ducked: false, resumed: resumed, needsTap: !!FOCUS.needsTap };
+      return { other: true, playing: false };
     }
 
-    /* a loss: give up the output rather than talking over whoever took it */
-    if (FOCUS.ducked) duck(false);
-    FOCUS.armedResume = (kind === "lossTransient") && wasPlaying;
-    if (wasPlaying) pausePlayback();
-    /* taken over for good, and we were the one playing: the user gets the choice, not us */
-    if (kind === "loss" && wasPlaying) askContention();
-    return { playing: false, willResume: FOCUS.armedResume };
+    if (kind === "otherAppGone") {
+      FOCUS.other = false;
+      return { other: false, playing: info().playing };
+    }
+
+    /* anything else is not ours to act on */
+    return { ignored: kind };
   }
 
   /* ------------------------------------------------ how playback failed ---- */
@@ -918,11 +876,10 @@
     if (el) el.classList.remove("wr-show");
   }
 
-  /* The dialog is for one thing only: another app took the output while the radio was
-     playing. A loss that comes straight back AFTER the user has already answered means the
-     system is flapping - asking again would be a dialog the user cannot satisfy, and that
-     is exactly what trapped v1.4.0 (ask, answer, refuse, ask). Say it quietly instead. A
-     fresh take-over later still gets a fresh dialog. */
+  /* The dialog is for one thing only: another app genuinely started playing while the radio
+     was playing. A take-over that arrives straight after the user has already answered is
+     reported quietly instead of asked again - a dialog they cannot satisfy is what trapped
+     v1.4.0 (ask, answer, refuse, ask). A fresh take-over later gets a fresh dialog. */
   var ASK = { at: 0, answeredAt: 0, count: 0 };
 
   function askContention() {
@@ -930,7 +887,7 @@
     if (!box) return false;
     var now = Date.now();
     if (!FOCUS.askPending && ASK.answeredAt && now - ASK.answeredAt < 8000) {
-      note("Another app keeps taking the sound \u2014 press play when you want the radio back.");
+      note("Another app is playing \u2014 press play when you want the radio back.");
       return false;
     }
     if (doc.hidden) { FOCUS.askPending = true; return false; }
@@ -950,18 +907,21 @@
     closeAsk();
     ASK.answeredAt = Date.now();         // the moment the user answered, for the flap guard
     if (what === "resume") {
-      /* taking the sound back is the service's job (it owns the focus request) */
+      /* Starting the radio again goes through the service: it is the thing that can speak
+         to the page while the app is in the background. */
       if (host && host.resume) { try { host.resume(); return true; } catch (e) { } }
       playPlayback();
       return true;
     }
     if (what === "pause") {
-      /* already paused and holding the notification: nothing to do */
+      /* already stopped with the notification still up: nothing to do */
       FOCUS.askPending = false;
       return true;
     }
-    /* stop: the page's stop reports, and the shell tears the session down */
+    /* Stop means stop: the page stops, and the service is told to take the notification
+       down too rather than leaving it offering to reconnect. */
     pausePlayback();
+    if (host && host.stop) { try { host.stop(); } catch (e) { } }
     return true;
   }
 
@@ -1022,9 +982,9 @@
     row(nf === false ? "warn" : "ok", "Notifications",
         nf === false ? "not granted \u2014 no lock-screen controls" : (nf === true ? "granted" : "not reported"));
 
-    row(FOCUS.refused ? "warn" : "ok", "Sound sharing",
-        FOCUS.refused ? "another app held the output recently"
-                      : (FOCUS.lastKind ? ("last: " + FOCUS.lastKind) : "nothing has asked for it yet"));
+    row(FOCUS.other ? "warn" : "ok", "Sound sharing",
+        FOCUS.other ? "another app is playing at the moment \u2014 the radio waits its turn"
+                    : "the app asks for no exclusive audio, so the radio mixes normally");
 
     row(navigator.onLine ? "ok" : "warn", "Network",
         navigator.onLine ? "online" : "offline \u2014 the list still works, streams won't");
@@ -1097,10 +1057,11 @@
     box.id = "wrAsk";
     box.innerHTML =
       '<div class="wr-askbox">' +
-      "  <h3>Another app wants the sound</h3>" +
-      "  <p>Something else on this device has taken over playback. What should the radio do?</p>" +
-      '  <button data-ask="resume">Continue here<b>Take the sound back \u2014 the other app pauses</b></button>' +
-      '  <button data-ask="pause">Pause<b>Stay paused; press play whenever you want it back</b></button>' +
+      "  <h3>Another app is playing</h3>" +
+      "  <p>Something else on this device started playing, so the radio stopped instead of " +
+      "talking over it. What should the radio do?</p>" +
+      '  <button data-ask="resume">Continue here<b>Start the radio again</b></button>' +
+      '  <button data-ask="pause">Pause<b>Leave it stopped; press play whenever you want it back</b></button>' +
       '  <button data-ask="stop">Stop<b>End playback and clear the notification</b></button>' +
       "</div>";
     box.addEventListener("click", function (ev) {
@@ -1220,7 +1181,7 @@
                unsupported: PLAYFAIL.unsupported, probed: PLAYFAIL.probed };
     },
     focusState: function () {
-      return { lastKind: FOCUS.lastKind, refused: FOCUS.refused, needsTap: FOCUS.needsTap };
+      return { lastKind: FOCUS.lastKind, other: FOCUS.other, needsTap: FOCUS.needsTap };
     },
     theme: function (mode) { return applyTheme(mode || (themeNow() === "light" ? "dark" : "light")); },
     random: randomStation,
