@@ -1,55 +1,43 @@
 # MODDYS World Radio v1.0.0
 
-**SPRAY IT LOUD — now in your pocket.** 47,994 stations from 221 countries, in the same
-theme you already know, in an app that keeps playing when you leave it.
+**SPRAY IT LOUD — in your pocket.** 47,994 stations from 221 countries, in the theme you
+already know, and it keeps playing when you leave it.
 
 ## What it does
 
-- **Keeps playing in the background.** Lock the screen, switch apps, check a message —
-  the station carries on. Play/pause and the station name appear on your lock screen and
-  in the notification shade.
-- **47,994 stations, 221 countries.** Filter by country, genre, codec and language,
-  search the lot, and keep favourites — they survive closing the app.
-- **Browse with no signal.** The whole station list ships inside the app, so the list and
-  the filters work offline. Only the streams need a connection.
-- **No ads, no accounts, no tracking.** The only thing the app talks to is the stream you
-  press play on.
+- **Keeps playing.** Lock the screen or switch apps and the station carries on. Play/pause
+  and the station name sit on your lock screen and in the notification shade.
+- **47,994 stations, 221 countries.** Filter by country, genre, codec and language, search
+  the lot, and keep favourites — they survive closing the app.
+- **Browse with no signal.** The whole station list is inside the app, so the list, the
+  filters and your favourites work offline. Only the streams need a connection.
+- **No ads, no accounts, no tracking.**
 
 ## Install
 
-1. Download **world-radio-v1.0.0.apk** from the Assets below — either straight to your
-   phone, or on a computer then copy it across.
-2. Open the file. Android will ask you to allow installing from this source; that's the
-   normal prompt for any app that isn't on the Play Store.
-3. Play Protect may mention an unknown developer — same reason, it isn't on the Store.
+1. Download **world-radio-v1.0.0.apk** from the Assets below — straight to your phone, or
+   on a computer and copy it across.
+2. Open it. Android will ask you to allow installing from this source — the normal prompt
+   for anything that isn't on the Play Store. Play Protect may say "unknown developer" for
+   the same reason.
+3. That's it. Needs **Android 8.0 or newer**.
 
-Requires **Android 8.0 or newer**.
-
-**Upgrading:** this is the first release, so just install it. Future versions install
-straight over the top and keep your favourites.
-
-## What it asks for
-
-- **Internet** — to play the stations.
-- **Notifications** — for the playback controls (Android 13+ will ask you to allow this).
-- That's all. No location, no contacts, no storage, no camera.
+Future versions install straight over the top and keep your favourites.
 
 ## Privacy & safety
 
-Nothing is collected and nothing is sent anywhere except the radio stream you choose.
-There are no analytics, no ads and no third-party SDKs — the app is built on Android's own
-WebView, media session and notification APIs and nothing else. About 8,300 stations in the
+Nothing is collected, and nothing leaves your phone except the stream you press play on.
+No analytics, no ads, no third-party libraries at all — the app is Android's own WebView,
+media session and notification APIs and nothing else. About 8,300 stations in the
 catalogue stream over plain HTTP, so the app allows cleartext for them; HTTPS stations are
-unaffected and certificate checking is **not** weakened — a station with a broken
+untouched and certificate checking is **not** weakened — a station with a broken
 certificate fails, and the app says so instead of pretending.
 
 ## Known limitations
 
-- A phone call or another music app may play over the radio rather than pausing it.
-  Audio focus is the next thing to fix.
-- Some stations in the catalogue are genuinely dead, or have expired certificates. Those
-  fail visibly rather than hanging.
-- If you had an older **debug** build installed, you can uninstall it — this release is a
-  separate, properly signed app.
+- Another music app may play over the radio instead of pausing it. Audio focus is the next
+  thing to fix.
+- Some stations in the catalogue are genuinely dead. They fail visibly rather than hang.
+- No version yet on the Play Store — this is a direct download.
 
 Cheers Moddy !
