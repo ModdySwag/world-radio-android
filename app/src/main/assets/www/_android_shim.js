@@ -156,6 +156,8 @@
 
   /* ------------------------------------------------------------ the sheet ---- */
 
+  var sheetEl = null;        // the sheet element, once built
+  var sheetCtl = null;       // its gesture controller
   var SHEET = { collapsed: true, open: false };
 
   function buildSheet() {
@@ -166,7 +168,7 @@
     css.textContent = [
       "html{-webkit-text-size-adjust:100%}",
       "#wrSheet{position:fixed;left:0;right:0;bottom:0;z-index:70;",
-      "  background:#12131e;",
+      "  background:var(--wr-sheet,#12131e);",
       "  border-top:3px solid var(--cyan);box-shadow:0 -10px 40px rgba(0,0,0,.6);",
       "  transform:translateY(var(--wr-y,0px));will-change:transform;",
       "  padding-bottom:env(safe-area-inset-bottom,0px);touch-action:none;}",
@@ -181,6 +183,9 @@
       "#wrSheet.wr-open .wr-grab b{transform:rotate(0)}",
       /* collapsed row */
       ".wr-row{display:flex;align-items:center;gap:11px;padding:6px 12px 12px;touch-action:none}",
+      /* expanded, the hero below already shows the station: keeping the compact row too
+         just repeated it and stole the room the visualiser needs */
+      "#wrSheet.wr-open .wr-row{display:none}",
       ".wr-art{width:46px;height:46px;border-radius:10px 4px 10px 4px;object-fit:cover;",
       "  border:1px solid var(--line);background:#0b0b12;flex:0 0 auto}",
       ".wr-txt{min-width:0;flex:1}",
@@ -205,19 +210,41 @@
       ".wr-hero .wr-h1{font-weight:900;font-size:19px;line-height:1.15;cursor:pointer}",
       ".wr-hero .wr-sub{font-size:12px;color:var(--mut);margin-top:5px;line-height:1.45}",
       ".wr-transport{display:flex;align-items:center;gap:10px;padding:0 14px 10px}",
-      ".wr-tbtn{flex:1;border:2px solid var(--line);background:rgba(255,255,255,.04);color:inherit;",
+      ".wr-tbtn{flex:1;border:2px solid var(--line);background:var(--wr-btn,rgba(255,255,255,.04));color:inherit;",
       "  border-radius:12px;padding:11px 8px;font-size:13px;font-weight:800;cursor:pointer}",
       ".wr-tbtn:active{transform:scale(.97)}",
+      ".wr-tbtn.wr-primary{background:var(--pink);border-color:var(--pink);color:#1a0312;flex:1.25}",
       ".wr-vol{display:flex;align-items:center;gap:10px;padding:0 14px 12px}",
       ".wr-vol input{flex:1;accent-color:var(--pink);height:22px}",
       ".wr-vol span{font-size:11px;color:var(--mut);min-width:38px;text-align:right}",
       ".wr-nav{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;padding:2px 14px 16px}",
-      ".wr-nav button{border:2px solid var(--line);background:rgba(255,255,255,.03);color:inherit;",
+      ".wr-nav button{border:2px solid var(--line);background:var(--wr-btn,rgba(255,255,255,.03));color:inherit;",
       "  border-radius:12px;padding:11px 4px 9px;font-size:10.5px;font-weight:800;cursor:pointer;",
       "  display:flex;flex-direction:column;align-items:center;gap:5px;line-height:1}",
       ".wr-nav button i{font-style:normal;font-size:17px}",
       ".wr-nav button:active{transform:scale(.96);border-color:var(--cyan)}",
-      ".wr-sep{height:1px;background:var(--line);margin:0 14px 12px;opacity:.5}"
+      ".wr-nav button.wr-on{border-color:var(--cyan);background:var(--wr-btn,transparent)}",
+      ".wr-sep{height:1px;background:var(--line);margin:0 14px 12px;opacity:.5}",
+      /* the visualiser, lifted out of the page's bar and into the sheet */
+      ".wr-vizsec{display:none;padding:0 14px calc(20px + env(safe-area-inset-bottom,0px))}",
+      "#wrSheet.wr-viz .wr-vizsec{display:block}",
+      ".wr-vizhead{display:flex;justify-content:space-between;align-items:center;font-size:10.5px;",
+      "  font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--mut);padding:0 2px 7px}",
+      ".wr-vizhead b{color:var(--cyan)}",
+      ".wr-vizwrap{border:2px solid var(--line);border-radius:12px;overflow:hidden;background:#0b0c12}",
+      /* the page hides this canvas below 900px and the canvas is sized to its own box,
+         so the shell gives it a real box to measure - hence !important on both counts */
+      ".wr-vizwrap #viz{display:block !important;width:100% !important;max-width:none !important;",
+      "  height:64px !important;border:0;border-radius:0;flex:none}",
+      ".wr-vizopts{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;padding:9px 0 0}",
+      ".wr-vizopts button{border:2px solid var(--line);background:var(--wr-btn,rgba(255,255,255,.03));",
+      "  color:var(--mut);border-radius:10px;padding:8px 2px 6px;font-size:9.5px;font-weight:800;",
+      "  cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;line-height:1}",
+      ".wr-vizopts button i{font-style:normal;font-size:14px}",
+      ".wr-vizopts button.wr-on{border-color:var(--cyan);color:var(--cyan)}",
+      ".wr-vizopts button:active{transform:scale(.96)}",
+      /* the station a random jump landed on, briefly lit */
+      ".card.wr-picked{outline:3px solid var(--cyan);outline-offset:2px;border-radius:14px 6px 14px 6px}"
     ].join("");
     (doc.head || doc.documentElement).appendChild(css);
 
@@ -243,6 +270,7 @@
       '    </div>' +
       '  </div>' +
       '  <div class="wr-transport">' +
+      '    <button class="wr-tbtn wr-primary" data-wr="play2">▶ Play</button>' +
       '    <button class="wr-tbtn" data-wr="details">ℹ Details</button>' +
       '    <button class="wr-tbtn" data-wr="stop">⏹ Stop</button>' +
       '    <button class="wr-tbtn" data-wr="site">🌐 Website</button>' +
@@ -251,13 +279,18 @@
       '  <div class="wr-sep"></div>' +
       '  <div class="wr-nav">' +
       '    <button data-wr="search"><i>🔎</i>Search</button>' +
-      '    <button data-wr="facets"><i>🎚</i>Filters</button>' +
+      '    <button data-wr="theme"><i>🌙</i>Dark</button>' +
       '    <button data-wr="fav"><i>★</i>Favourites</button>' +
-      '    <button data-wr="local"><i>📍</i>Local</button>' +
+      '    <button data-wr="random"><i>🎲</i>Random</button>' +
       '    <button data-wr="playable"><i>✓</i>Playable</button>' +
       '    <button data-wr="reset"><i>↺</i>Reset</button>' +
       '    <button data-wr="top"><i>▲</i>Top</button>' +
       '    <button data-wr="viz"><i>🎛</i>Visual</button>' +
+      '  </div>' +
+      '  <div class="wr-vizsec" id="wrVizSec">' +
+      '    <div class="wr-vizhead"><span>Visualiser</span><b id="wrVizName">off</b></div>' +
+      '    <div class="wr-vizwrap" id="wrVizWrap"></div>' +
+      '    <div class="wr-vizopts" id="wrVizOpts"></div>' +
       '  </div>' +
       '</div>';
     doc.body.appendChild(sheet);
@@ -270,15 +303,21 @@
     var MAX = 0;                                  // px the sheet travels when collapsed
     var y = -1, dragging = false, startY = 0, startOffset = 0;
 
+    var collapseH = 0;                            // measured while collapsed
     function measure() {
       /* The sheet is laid out as a full-height panel pinned to the bottom, then translated
          down so that only the grabber + collapsed row remain on screen. Without an explicit
          height the collapsed state would slide the whole sheet off the bottom edge - which
-         is exactly the bug this replaces. */
-      var grab = sheet.querySelector(".wr-grab");
-      var row = sheet.querySelector(".wr-row");
-      var collapsedH = (grab ? grab.offsetHeight : 22) + (row ? row.offsetHeight : 66);
-      var expandedH = Math.min(Math.round(window.innerHeight * 0.62), 640);
+         is exactly the bug this replaces. The row is hidden once expanded, so its height is
+         only ever measured in the collapsed state. */
+      if (!sheet.classList.contains("wr-open")) {
+        var grab = sheet.querySelector(".wr-grab");
+        var row = sheet.querySelector(".wr-row");
+        collapseH = (grab ? grab.offsetHeight : 22) + (row ? row.offsetHeight : 66);
+      }
+      var collapsedH = collapseH || 88;
+      var pct = sheet.classList.contains("wr-viz") ? 0.72 : 0.62;   // taller with the visualiser
+      var expandedH = Math.min(Math.round(window.innerHeight * pct), pct > 0.65 ? 720 : 640);
       sheet.style.height = expandedH + "px";
       sheet.style.setProperty("--wr-full", Math.max(0, expandedH - collapsedH) + "px");
       MAX = Math.max(0, expandedH - collapsedH);
@@ -329,10 +368,11 @@
       setOpen(dy < 0);
     }
 
-    var grab = sheet.querySelector('[data-wr="grab"]');
-    var row = sheet.querySelector('[data-wr="row"]');
-    [grab, row].forEach(function (el) {
-      el.addEventListener("pointerdown", onDown, { passive: true });
+    /* Where it makes sense to grab: the handle, the compact row, and the two inert header
+       strips of the expanded view. Buttons and the volume slider are never stolen. */
+    [sheet.querySelector('[data-wr="grab"]'), sheet.querySelector('[data-wr="row"]'),
+     sheet.querySelector(".wr-hero"), sheet.querySelector(".wr-vizhead")].forEach(function (el) {
+      if (el) el.addEventListener("pointerdown", onDown, { passive: true });
     });
     doc.addEventListener("pointermove", onMove, { passive: false });
     doc.addEventListener("pointerup", onUp, { passive: true });
@@ -352,18 +392,18 @@
       /* Taps on the handle / row are handled by the gesture code on pointerup - acting on
          the follow-up click as well made every drag undo itself. */
       if (act === "grab" || act === "row") return;
-      if (act === "play") { press("#bPlay"); pushState(true); return; }
+      if (act === "play" || act === "play2") { press("#bPlay"); pushState(true); return; }
       if (act === "stop") { press("#bStop"); pushState(true); return; }
       if (act === "details") { press("#bName"); return; }
       if (act === "site") { press("#btnBarSite"); return; }
       if (act === "search") { focusSearch(); setOpen(false); return; }
-      if (act === "facets") { press("#btnFacets"); setOpen(false); return; }
+      if (act === "theme") { toggleTheme(); return; }
       if (act === "fav") { press("#btnFav"); setOpen(false); return; }
-      if (act === "local") { press("#btnLocal"); setOpen(false); return; }
+      if (act === "random") { randomStation(); return; }
       if (act === "playable") { press("#btnPlayable"); setOpen(false); return; }
       if (act === "reset") { press("#btnReset"); setOpen(false); return; }
       if (act === "top") { press("#toTop"); setOpen(false); return; }
-      if (act === "viz") { press("#btnViz"); return; }
+      if (act === "viz") { toggleViz(); return; }
     });
 
     var vol = sheet.querySelector("#wrVol");
@@ -439,20 +479,205 @@
     return sync;
   }
 
+  /* ---------------------------------------------------------- light mode ---- */
+
+  var THEME_KEY = "rbg-wr-theme";
+
+  function themeNow() {
+    try { return localStorage.getItem(THEME_KEY) === "light" ? "light" : "dark"; }
+    catch (e) { return "dark"; }
+  }
+
+  /* The site is a dark design with no light mode of its own, so light is the shell's own
+     re-skin: the page's palette is overridden wholesale and the shell follows it. */
+  function injectThemeCss() {
+    var css = doc.createElement("style");
+    css.textContent = [
+      "html.wr-light{",
+      "  --bg:#eef1f8;--bg2:#ffffff;--panel:#ffffff;--panel2:#e6eaf5;--line:#c7cee2;",
+      "  --tx:#141728;--mut:#5b6383;--pink:#c9166f;--cyan:#0a7f9c;--lime:#5c8a00;",
+      "  --orange:#b76100;--purp:#6b31cf;--yel:#8f6f00;--ok:#0d7043;--warn:#9a5200;",
+      "  --wr-sheet:#ffffff;--wr-btn:rgba(20,23,40,.05)}",
+      "html.wr-light,html.wr-light body{background:var(--bg);color:var(--tx)}",
+      "html.wr-light body::before{opacity:.10}",
+      /* The page hard-codes these dark, so the palette override alone is not enough
+         (and its #id rules outrank a class). Each one below was measured, not guessed. */
+      "html.wr-light .btn,html.wr-light .bctrl{background:#fff !important;color:var(--tx) !important;",
+      "  border-color:var(--line) !important}",
+      "html.wr-light .btn.pink{color:var(--pink) !important;border-color:var(--pink) !important}",
+      "html.wr-light .tag{background:#e9edf6 !important;color:#3c4258 !important}",
+      "html.wr-light .chip{background:#e9edf6 !important;color:var(--mut) !important}",
+      "html.wr-light .ftag{background:#fff !important;color:var(--tx) !important;",
+      "  border-color:rgba(20,23,40,.22) !important}",
+      "html.wr-light .ftag.on{background:var(--pink) !important;color:#fff !important;border-color:var(--pink) !important}",
+      "html.wr-light #q,html.wr-light #pgJump,html.wr-light #dynLang,html.wr-light select{",
+      "  background:#fff !important;color:var(--tx) !important}",
+      "html.wr-light img.fav{background:#e9edf6 !important}",
+      "html.wr-light #dock .dwin{background:#fff !important;color:var(--tx) !important}",
+      /* the panel behind the active-filter readout, and the big title, are hardcoded */
+      "html.wr-light .facets,html.wr-light .frow,html.wr-light .fbar,html.wr-light #fActive{",
+      "  background:#fff !important;color:var(--tx) !important}",
+      "html.wr-light header h1,html.wr-light header h1 .brand,html.wr-light header h1 *{",
+      "  color:var(--tx) !important}",
+      "html.wr-light header h1,html.wr-light header h1 .brand{text-shadow:2px 2px 0 rgba(201,22,111,.28)}",
+      /* the accent badge keeps its punch in both themes - it is a gradient, so a plain
+         background override would have deleted it */
+      "html.wr-light header .spraytag{background:linear-gradient(90deg,#c9ff3d,#ffe14d) !important;",
+      "  color:#141728 !important}",
+      "html.wr-light .wr-art,html.wr-light .wr-hero img{background:#e9edf6}",
+      /* the visualiser stays a dark little screen on purpose: its bars are bright */
+      "html.wr-light .wr-vizwrap{border-color:#c7cee2}"
+    ].join("");
+    (doc.head || doc.documentElement).appendChild(css);
+  }
+
+  function applyTheme(mode, remember) {
+    var light = mode === "light";
+    doc.documentElement.classList.toggle("wr-light", light);
+    if (remember !== false) {
+      try { localStorage.setItem(THEME_KEY, light ? "light" : "dark"); } catch (e) { }
+    }
+    var b = sheetEl && sheetEl.querySelector('[data-wr="theme"]');
+    if (b) {
+      b.querySelector("i").textContent = light ? "☀" : "🌙";
+      b.lastChild.textContent = light ? "Light" : "Dark";
+      b.classList.toggle("wr-on", light);
+      b.title = light ? "Light mode is on - tap for dark" : "Dark mode is on - tap for light";
+    }
+    return light;
+  }
+
+  function toggleTheme() { return applyTheme(themeNow() === "light" ? "dark" : "light"); }
+
+  /* --------------------------------------------------- header stays put ---- */
+
+  /* The page can collapse its own header (its button, or the "h" shortcut, remembered in
+     storage). The app wants a static header, so the control goes away and a collapsed
+     state is never allowed to stick - however it got set. */
+  function keepHeaderStatic() {
+    var css = doc.createElement("style");
+    css.textContent = "#btnHdr{display:none !important}";
+    (doc.head || doc.documentElement).appendChild(css);
+    try { localStorage.setItem("rbg-hdr-compact", "false"); } catch (e) { }
+    var head = $("#hdrHead");
+    if (!head) return;
+    var expand = function () {
+      if (head.classList.contains("compact")) head.classList.remove("compact");
+    };
+    expand();
+    new MutationObserver(expand).observe(head, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  /* ------------------------------------------------------ random station ---- */
+
+  /* "Surprise me": play one of the stations actually on screen. The page owns selection,
+     so this drives a card rather than reaching behind it - which also means it respects
+     whatever filters are currently applied. */
+  function randomStation() {
+    var buttons = doc.querySelectorAll('[data-act="play"]');
+    if (!buttons.length) return press("#bPlay");
+    var pick = buttons[Math.floor(Math.random() * buttons.length)];
+    var card = pick.closest(".card") || pick;
+    try { card.scrollIntoView({ behavior: "smooth", block: "center" }); } catch (e) { }
+    card.classList.add("wr-picked");
+    window.setTimeout(function () { card.classList.remove("wr-picked"); }, 1800);
+    pick.click();
+    return true;
+  }
+
+  /* ---------------------------------------------------------- visualiser ---- */
+
+  var VIZNAMES = ["Bars", "Waves", "Mirror", "Dots", "Blocks"];
+  var VIZICONS = ["▮", "～", "◧", "⠿", "▦"];
+  var VIZ = { style: 0 };
+
+  /* The page cycles its five styles off one button, so a style is picked by driving that
+     cycle, then read back to confirm it landed. No page change, nothing duplicated. */
+  function vizState() {
+    var btn = $("#btnViz");
+    var m = /Visualiser:\s*([A-Za-z]+)/.exec(btn ? (btn.getAttribute("title") || "") : "");
+    var name = m ? m[1].toLowerCase() : "off";
+    if (name === "off") return { on: false, style: -1 };
+    var hit = -1;
+    for (var n = 0; n < VIZNAMES.length; n++) {
+      if (VIZNAMES[n].toLowerCase() === name) hit = n;
+    }
+    return { on: true, style: hit < 0 ? 0 : hit };
+  }
+
+  function vizCycleTo(pos) {                  // 0 = off, 1..5 = styles (index + 1)
+    var len = VIZNAMES.length + 1;
+    var cur = vizState();
+    var steps = (pos - (cur.on ? cur.style + 1 : 0) + len) % len;
+    for (var n = 0; n < steps; n++) press("#btnViz");
+    return vizState();
+  }
+
+  function syncViz() {
+    var s = vizState();
+    if (!sheetEl) return s;
+    if (s.on) VIZ.style = s.style;
+    sheetEl.classList.toggle("wr-viz", s.on);
+    var name = sheetEl.querySelector("#wrVizName");
+    if (name) name.textContent = s.on ? VIZNAMES[VIZ.style] : "off";
+    var nav = sheetEl.querySelector('[data-wr="viz"]');
+    if (nav) nav.classList.toggle("wr-on", s.on);
+    var opts = sheetEl.querySelectorAll("[data-viz]");
+    for (var i = 0; i < opts.length; i++) {
+      opts[i].classList.toggle("wr-on", s.on && i === VIZ.style);
+    }
+    return s;
+  }
+
+  function buildViz() {
+    var wrap = $("#wrVizWrap"), opts = $("#wrVizOpts"), canvas = $("#viz");
+    if (!wrap || !opts) return;
+    if (canvas) wrap.appendChild(canvas);       // moved, not copied: the page keeps drawing
+    VIZNAMES.forEach(function (n, i) {
+      var b = doc.createElement("button");
+      b.setAttribute("data-viz", String(i));
+      b.innerHTML = "<i>" + VIZICONS[i] + "</i>" + n;
+      b.title = n + " visualiser";
+      opts.appendChild(b);
+    });
+    opts.addEventListener("click", function (ev) {
+      var b = ev.target.closest("[data-viz]");
+      if (!b) return;
+      vizCycleTo(parseInt(b.getAttribute("data-viz"), 10) + 1);
+      syncViz();
+      if (sheetCtl) sheetCtl.measure();
+    });
+    syncViz();
+  }
+
+  /* The Visual button in the grid shows or hides the whole section. */
+  function toggleViz() {
+    if (vizState().on) { vizCycleTo(0); } else { vizCycleTo(VIZ.style + 1); }
+    syncViz();
+    if (sheetCtl) sheetCtl.measure();
+  }
+
   /* -------------------------------------------------------------- assemble ---- */
 
   killPopOut();
   externalLinks();
   suppressDiskNotice();
+  keepHeaderStatic();
+  injectThemeCss();
+  applyTheme(themeNow(), false);
 
   var sheet = buildSheet();
+  sheetEl = sheet;
   if (sheet) {
     var ctl = sheetController(sheet);
+    sheetCtl = ctl;
     var syncNow = mirror(ctl);
+    buildViz();
 
     // one cheap ticker drives both the sheet mirror and the shell's own state report
     var tick = function () {
       syncNow();
+      syncViz();
       var s = info();
       var playing = s.playing;
       var chip = $("#wrChip");
@@ -464,9 +689,12 @@
       pushState(false);
     };
     var playBtn = sheet.querySelector('[data-wr="play"]');
+    var playBig = sheet.querySelector('[data-wr="play2"]');
     function pressLabel(playing) {
-      var label = playing ? "⏸" : "▶";
-      if (playBtn && playBtn.textContent !== label) playBtn.textContent = label;
+      var short = playing ? "⏸" : "▶";
+      if (playBtn && playBtn.textContent !== short) playBtn.textContent = short;
+      var full = playing ? "⏸ Pause" : "▶ Play";
+      if (playBig && playBig.textContent !== full) playBig.textContent = full;
     }
     setInterval(tick, 1000);
     tick();
@@ -505,6 +733,21 @@
     },
     toggle: function () { if (info().playing) { window.__wr.pause(); } else { window.__wr.play(); } },
     info: info,
-    sheet: function () { return SHEET; }
+    sheet: function () { return SHEET; },
+    theme: function (mode) { return applyTheme(mode || (themeNow() === "light" ? "dark" : "light")); },
+    random: randomStation,
+    viz: function (i) {
+      if (i == null) { return syncViz(); }
+      vizCycleTo(i + 1);
+      syncViz();
+      if (sheetCtl) sheetCtl.measure();
+      return vizState();
+    },
+    vizOff: function () {
+      vizCycleTo(0);
+      syncViz();
+      if (sheetCtl) sheetCtl.measure();
+      return vizState();
+    }
   };
 })();

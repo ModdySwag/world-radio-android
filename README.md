@@ -17,9 +17,18 @@ version.
   "disconnect" — which is exactly what the site's stop button does.
 - **One player, dragged open.** No pop-out, no second player. The bottom bar is the only
   player: drag it up for the full view (logo, station name, country · language · codec ·
-  bitrate, Details / Stop / Website, volume, and one-tap jumps to Search, Filters,
-  Favourites, Local, Playable, Reset, Top and Visual), drag it down or tap the handle to
-  fold it back to a bar.
+  bitrate, a labelled Play, Details / Stop / Website, volume, and one-tap jumps to Search,
+  Light/Dark, Favourites, Random, Playable, Reset, Top and Visual), drag it down or tap a
+  header strip to fold it back to a bar.
+- **Five visualiser styles, where you can actually see them.** The site's visualiser is
+  decorative and hidden below 900px wide — i.e. on every phone. The shell lifts its canvas
+  into the expanded player and adds style buttons: Bars, Waves, Mirror, Dots, Blocks.
+- **Light mode.** The theme button re-skins the interface and the player together, and
+  remembers your choice between launches.
+- **Random.** One tap plays a station from whatever is currently listed, so it respects
+  your filters, and flashes the one it picked.
+- **A static header.** The site's "Header" collapse control is gone in the app: title,
+  stats and tagline are always visible.
 - **Cleartext streams kept.** Android blocks `http://` by default; the network security
   config allows it, because 8,330 of the 47,994 stations are cleartext. HTTPS stations
   are unaffected and certificate checks are *not* bypassed.
@@ -72,7 +81,7 @@ reproducible.)
 |---|---|
 | `MainActivity.java` | hosts the web app in a WebView; loads `_android_shim.js` after each page load; routes external links to the phone's browser |
 | `PlaybackService.java` | foreground service + `MediaSession` + notification; never touches audio itself |
-| `assets/www/_android_shim.js` | the only new front-end code: the player sheet, external-link routing, the banner suppression, and state reporting |
+| `assets/www/_android_shim.js` | the only new front-end code: the player sheet, its visualiser styles and light mode, external-link routing, the banner suppression, and state reporting |
 | `res/xml/network_security_config.xml` | allows cleartext for the `http://` stations |
 
 Playback stays in the page — its own single-owner model is not re-implemented. The shell
@@ -83,10 +92,15 @@ notification's station name is lost.
 ### The player sheet is coupled to the page's markup, on purpose
 
 The sheet does not reimplement playback, so it reaches for the page's own controls by id:
-`#bPlay`, `#bStop`, `#bName` (opens the station details), `#bMeta`, `#bArt`, `#vol`,
-`#btnBarSite`, `#btnViz`, plus the navigation buttons `#q`, `#btnFacets`, `#btnFav`,
-`#btnLocal`, `#btnPlayable`, `#btnReset`, `#toTop`. It also hides `#bar` and `#dock` and
-suppresses the disk notice.
+`#bPlay`, `#bStop`, `#bName` (opens the station details), `#bMeta`, `#bArt`, `#bState`,
+`#vol` and `#btnBarSite`, plus the navigation targets `#q`, `#btnFav`, `#btnPlayable`,
+`#btnReset`, `#toTop` and the cards' `[data-act="play"]` buttons that Random drives. The
+visualiser is steered through `#btnViz` and its canvas `#viz` is moved into the sheet;
+`#hdrHead` is held expanded so the header stays static.
+
+It also hides `#btnPop`, `#dock`, `#bar` and `#btnHdr`, suppresses the disk notice, and
+carries the light-mode palette — the page is dark-only, so those overrides live in one
+block in the shell, each one measured against the page rather than guessed.
 
 So if the web app ever renames those ids, the shell needs the matching edit — one place,
 listed above. That is the deliberate trade for having one source of truth instead of two

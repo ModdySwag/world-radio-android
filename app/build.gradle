@@ -10,8 +10,8 @@ android {
         applicationId "com.moddys.worldradio"
         minSdk 26            // 2017+; also lets us use Notification.Builder(context, channel)
         targetSdk 34
-        versionCode 2
-        versionName "1.1.0"
+        versionCode 3
+        versionName "1.2.0"
     }
 
     signingConfigs {
