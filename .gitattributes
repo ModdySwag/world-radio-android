@@ -1,0 +1,13 @@
+# Line endings
+#
+# The bundled web app must stay byte-identical to what moddys.net serves, so git must
+# not rewrite line endings inside it: a newline inside a JS template literal is content,
+# and byte-identity is what makes hash comparisons against the live site meaningful.
+app/src/main/assets/www/* -text
+
+# Source files: normalise to LF in the repository (checked out per platform default).
+*.java text
+*.gradle text
+*.xml text
+*.yml text
+*.md text
