@@ -14,6 +14,22 @@ android {
         versionName "1.0.0"
     }
 
+    signingConfigs {
+        release {
+            // Filled in from CI secrets (see .github/workflows/release.yml). When the env
+            // var is absent - any normal local build - the release variant is simply left
+            // unsigned rather than failing the build.
+            def ksPath = System.getenv("KEYSTORE_FILE")
+            if (ksPath) {
+                storeFile file(ksPath)
+                storePassword System.getenv("KEYSTORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+                storeType "PKCS12"
+            }
+        }
+    }
+
     buildTypes {
         debug {
             // side-loadable; signed with the CI debug key
@@ -22,7 +38,9 @@ android {
         }
         release {
             minifyEnabled false
-            // v1 ships debug builds; a signing config is added when you want a Play upload
+            if (System.getenv("KEYSTORE_FILE")) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 

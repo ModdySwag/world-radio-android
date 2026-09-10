@@ -1,0 +1,110 @@
+name: Release APK
+
+# Builds the signed release APK and publishes it as a GitHub Release asset, so anyone can
+# download and install it. Tag a commit `v*` to fire this.
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Signed release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Ensure the exact SDK components this build targets
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Verify the bundled web app is complete
+        run: |
+          set -e
+          for f in index.html stations.js countries.js _android_shim.js; do
+            test -s "app/src/main/assets/www/$f" || { echo "missing asset: $f"; exit 1; }
+          done
+          echo "assets ok"
+
+      - name: Decode the signing keystore
+        run: |
+          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "KEYSTORE_BASE64 secret is not set - cannot sign a release build"; exit 1
+          fi
+          printf '%s' "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > "$RUNNER_TEMP/release.p12"
+          test -s "$RUNNER_TEMP/release.p12" || { echo "keystore decoded empty"; exit 1; }
+          ls -l "$RUNNER_TEMP/release.p12"
+
+      - name: Build signed release
+        env:
+          KEYSTORE_FILE: ${{ runner.temp }}/release.p12
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: gradle :app:assembleRelease --stacktrace
+
+      # Never publish something unsigned by accident: an unsigned APK installs for nobody.
+      - name: Confirm the APK is actually signed
+        run: |
+          set -e
+          ls -la app/build/outputs/apk/release/
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          echo "artifact: $APK"
+          case "$APK" in
+            *unsigned*) echo "APK IS UNSIGNED - refusing to publish"; exit 1 ;;
+          esac
+          unzip -l "$APK" | grep -q "META-INF/" || { echo "no META-INF in the APK"; exit 1; }
+          if grep -qa "APK Sig Block 42" "$APK"; then
+            echo "v2/v3 signature block present"
+          else
+            echo "WARNING: no v2/v3 signature block (v1 signing only)"
+          fi
+          unzip -l "$APK" | grep -E "assets/www/(index.html|stations.js)"
+
+      - name: Name the download for humans
+        run: cp app/build/outputs/apk/release/*.apk "world-radio-${{ github.ref_name }}.apk"
+
+      - name: Keep it as a workflow artifact too
+        uses: actions/upload-artifact@v4
+        with:
+          name: world-radio-release-apk
+          path: world-radio-*.apk
+          if-no-files-found: error
+
+      - name: Publish the GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG="${{ github.ref_name }}"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" "world-radio-$TAG.apk" --clobber
+          else
+            gh release create "$TAG" "world-radio-$TAG.apk" \
+              --title "MODDYS World Radio $TAG" \
+              --notes-file RELEASE_NOTES.md
+          fi
+          echo "--- release state ---"
+          gh release view "$TAG"
