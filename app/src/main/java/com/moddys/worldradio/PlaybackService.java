@@ -90,11 +90,8 @@ public class PlaybackService extends Service {
         session.setCallback(new MediaSession.Callback() {
             @Override
             public void onPlay() {
-                if (requestFocus()) {
-                    tellPage("play");
-                } else {
-                    showPaused(getString(R.string.notification_held));
-                }
+                if (!requestFocus()) tellFocus("refused");
+                tellPage("play");
             }
 
             @Override
@@ -132,12 +129,8 @@ public class PlaybackService extends Service {
         /* The user asked for the radio back (from the notification, the lock screen or the
            app): take the output first, and only start if the system agrees. */
         if (ACTION_RESUME.equals(action)) {
-            if (requestFocus()) {
-                tellPage("play");
-            } else {
-                tellFocus("refused");
-                showPaused(getString(R.string.notification_held));
-            }
+            if (!requestFocus()) tellFocus("refused");
+            tellPage("play");
             return START_NOT_STICKY;
         }
 
@@ -159,15 +152,12 @@ public class PlaybackService extends Service {
             String s = intent.getStringExtra(EXTRA_STATION);
             if (s != null && !s.trim().isEmpty()) station = s.trim();
 
-            /* Another app may already be the thing the user is listening to. Ask for the
-               output: if it is refused, stop rather than play over it, and let the page ask
-               the user what they want (continue / pause / stop). */
-            if (!requestFocus()) {
-                tellFocus("refused");
-                showPaused(getString(R.string.notification_held));
-                return START_NOT_STICKY;
-            }
-
+            /* Focus is advisory here, NOT a gate. Android does not enforce audio focus, and
+               on some devices the request comes back non-granted when nothing else is
+               playing at all. v1.4.0 refused to play in that case and looped the user
+               through a dialog that could never succeed - so: tell the page (it says so
+               once) and play anyway. The user is in charge of who gets the sound. */
+            if (!requestFocus()) tellFocus("refused");
             showPlaying();
             return START_NOT_STICKY;
         }

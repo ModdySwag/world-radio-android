@@ -1,72 +1,57 @@
-# MODDYS World Radio v1.4.0
+# MODDYS World Radio v1.4.1
 
-**Plays on the tablets it wouldn't.** 47,994 stations from 221 countries, in the theme you
-already know, and it keeps playing when you leave it.
+**Fixes a bug in v1.4.0.** If the radio told you another app wanted the sound and then
+refused to play no matter how many times you pressed the button, this is that fixed.
+Install straight over the top — your favourites are kept.
 
-## What's new in this version
+## What was wrong
 
-- **"Your browser blocked playback" is fixed — and it was never one problem.** That single
-  message covered four different failures: a browser that wants a real *tap*, our own stop
-  interrupting a start, a stream this device cannot decode, and a device that failed to
-  read one. Each now gets the right response:
-  - an interrupted start is quietly retried once;
-  - a stream this device cannot decode is reported instead of retried forever;
-  - and a device that wants a tap **is never restarted without one**.
-- **The radio no longer reconnects itself on devices that won't allow it.** After a phone
-  call the stream used to come back on its own — the one moment a browser can refuse,
-  because no finger was involved. On a device that needs a tap it now stays paused with the
-  Play button and the reason on it, instead of failing with an error.
-- **Another app wants the sound? You choose.** When something else takes over playback, the
-  radio stops rather than talking over it and asks: **Continue here**, **Pause**, or
-  **Stop**. If you're not looking at the app, the notification carries the same choice
-  instead of interrupting you.
-- **A system check, built in.** Tap **Check** in the expanded player for this device's
-  real story: model, Android version, **WebView version**, which formats it can decode
-  (MP3 / AAC / HLS), **how many of the 47,994 stations this device can actually play**,
-  whether it needs a tap to start, whether favourites will persist, notifications, sound
-  sharing and network. **Copy report** puts it on the clipboard to paste into a message.
-- **Hardened for real-world tablets:**
-  - a device with no usable WebView now says so, instead of crashing on launch;
-  - a WebView renderer killed by low memory (common on tablets) rebuilds the player
-    instead of leaving a blank screen with the audio gone;
-  - the "no tap needed" setting is re-applied on every page load, because some devices
-    lose it;
-  - failed page loads are logged, so a device report has something to go on.
+v1.4.0 treated a refused audio-focus request as permission to play. On some devices —
+Samsung, Xiaomi and a few tablets — that request comes back refused even when **nothing else
+is playing**, so the radio stopped, asked you what to do, and then asked again the moment you
+answered. A loop with no way out.
 
-## If a station still won't play
+Two other things went in with it, both of which made that worse:
 
-Open the player, tap **Check**, then **Copy report** and send it on. It says exactly which
-formats that device can decode and how many stations it can play, which is almost always
-the answer. The **Playable** button in the player filters the list to just the stations
-this device can actually play.
+- A silent probe at startup trying to work out whether your device needed a real tap. It ran
+  with no gesture and no user intent, which on some tablets means it fails, marking a device
+  that plays perfectly as one that "needs a tap".
+- The refusal path stopped playback instead of simply saying the sound was shared.
+
+## What changed
+
+- **Focus is advice, not a gate.** If the system refuses the request, the radio plays anyway
+  — Android does not enforce audio focus, and refusing you the handle is not the same as
+  telling you not to play. You get one quiet note that the sound is shared, and that's all.
+- **The dialog means one thing.** Another app taking the output *while you were listening*
+  brings up Continue here / Pause / Stop, as before. A take-over straight after you answered
+  is reported quietly rather than asked again, so it can never loop — and a fresh take-over
+  later still asks properly.
+- **Nothing is touched at startup.** The tap probe now runs from the Check panel, on demand,
+  from a real press, where the answer is honest. Until then the panel says "not tested yet"
+  rather than guessing.
+- **Everything else from v1.4.0 is unchanged:** the Check panel (device, WebView version,
+  codecs, how much of the catalogue this device can play, copy report), the failure
+  classification, renderer recovery, the no-WebView message.
+
+## Verified
+
+- 128 checks driving the real player in a real browser, including the reported loop: answer
+  "Continue here", have the sound taken straight back, and confirm the dialog does **not**
+  return.
+- 68 project checks, including that the service can no longer stop playback over a failed
+  focus request, and that the shell's refusal path contains no pause and no dialog.
+- The published APK is checked after CI: identity, signature (same key as every release),
+  and the new code present in `classes.dex`.
 
 ## Install
 
-1. Download **world-radio-v1.4.0.apk** from the Assets below — straight to your phone, or
-   on a computer and copy it across.
-2. Open it. Android will ask you to allow installing from this source — the normal prompt
-   for anything that isn't on the Play Store. Play Protect may say "unknown developer" for
-   the same reason.
-3. That's it. Needs **Android 8.0 or newer**.
+Download `world-radio-v1.4.1.apk` below and open it on the phone or tablet. If you have any
+version installed, this installs over it — no uninstall, no lost favourites.
 
-Already on an earlier version? Install straight over the top — your favourites survive.
-
-## Privacy & safety
-
-Nothing is collected, and nothing leaves your phone except the stream you press play on.
-No analytics, no ads, no third-party libraries at all — the app is Android's own WebView,
-media session and notification APIs and nothing else. About 8,300 stations in the
-catalogue stream over plain HTTP, so the app allows cleartext for them; HTTPS stations are
-untouched and certificate checking is **not** weakened — a station with a broken
-certificate fails, and the app says so instead of pretending.
-
-## Known limitations
-
-- Playback runs in the device's Android System WebView, so what plays depends on that
-  **WebView version**, not the Android version. Updating "Android System WebView" (or
-  Chrome, which supplies it on many devices) in the Play Store fixes most of it — and the
-  built-in Check panel shows what any device can do.
-- Some stations in the catalogue are genuinely dead. They fail visibly rather than hang.
-- No version yet on the Play Store — this is a direct download.
+**Privacy & safety:** the app talks to one thing only, the radio directory and the streams
+you play. No analytics, no accounts, no tracking, nothing collected and nothing sent
+anywhere. Cleartext `http://` streams are allowed because 8,330 of the 47,994 stations are
+still plain HTTP; certificate checks are never bypassed.
 
 Cheers Moddy !

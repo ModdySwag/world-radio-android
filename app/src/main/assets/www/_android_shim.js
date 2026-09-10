@@ -235,6 +235,10 @@
       ".wr-nav button:active{transform:scale(.96);border-color:var(--cyan)}",
       ".wr-nav button.wr-on{border-color:var(--cyan);background:var(--wr-btn,transparent)}",
       ".wr-sep{height:1px;background:var(--line);margin:0 14px 12px;opacity:.5}",
+      /* a one-line, non-blocking note: never a dialog for something the user did not do */
+      ".wr-note{display:none;margin:0 14px 10px;padding:8px 10px;border:2px solid var(--warn,#ffb454);",
+      "  border-radius:10px;font-size:11.5px;line-height:1.4}",
+      ".wr-note.wr-show{display:block}",
       /* the visualiser, lifted out of the page's bar and into the sheet */
       ".wr-vizsec{display:none;padding:0 14px calc(20px + env(safe-area-inset-bottom,0px))}",
       "#wrSheet.wr-viz .wr-vizsec{display:block}",
@@ -298,6 +302,7 @@
       '  <button class="wr-round" data-wr="play" title="Play or pause">▶</button>' +
       '</div>' +
       '<div class="wr-full">' +
+      '  <div class="wr-note" id="wrNote"></div>' +
       '  <div class="wr-hero">' +
       '    <img id="wrBigArt" alt="">' +
       '    <div style="min-width:0">' +
@@ -439,7 +444,9 @@
           c.innerHTML = "<i>" + (ok ? "\u2713" : "\u2715") + "</i>" + (ok ? "Copied" : "Copy failed");
           window.setTimeout(function () { c.innerHTML = "<i>\u29c9</i>Copy report"; }, 2000);
         } else {
+          /* Run again runs from a real press, so the tap probe tells the truth here. */
           renderCheck();
+          probeAutoplay(function () { renderCheck(); });
         }
         return;
       }
@@ -759,13 +766,15 @@
     var wasPlaying = info().playing;
     FOCUS.lastKind = kind;
 
-    /* the service could not take the output at all: stop rather than play over whoever
-       holds it, then let the user decide what happens next */
+    /* The system refused us the output. That is NOT a reason to stop playing: Android does
+       not enforce focus, and on some devices the request comes back non-granted even when
+       nothing else is playing at all. v1.4.0 treated it as a gate and looped the user
+       through a dialog that could never succeed. So: keep playing, say so once, and leave
+       the user in charge. */
     if (kind === "refused") {
       FOCUS.refused = true;
-      if (wasPlaying) pausePlayback();
-      askContention();
-      return { refused: true, playing: false };
+      note("Another app is playing too \u2014 the radio is sharing the sound.");
+      return { refused: true, playing: wasPlaying };
     }
 
     if (kind === "duck") {
@@ -796,8 +805,8 @@
     if (FOCUS.ducked) duck(false);
     FOCUS.armedResume = (kind === "lossTransient") && wasPlaying;
     if (wasPlaying) pausePlayback();
-    /* taken over for good: the user gets the choice, not us */
-    if (kind === "loss") askContention();
+    /* taken over for good, and we were the one playing: the user gets the choice, not us */
+    if (kind === "loss" && wasPlaying) askContention();
     return { playing: false, willResume: FOCUS.armedResume };
   }
 
@@ -812,7 +821,7 @@
        NotReadableError   the device failed to read or decode it - do not retry
      Device WebViews differ in which of these they raise, which is how "some tablets fail"
      happens with no fault in the app. */
-  var PLAYFAIL = { last: "", retriedAt: 0, gestureNeeded: false, unsupported: false };
+  var PLAYFAIL = { last: "", retriedAt: 0, gestureNeeded: false, unsupported: false, probed: false };
 
   function playError() {
     var d = window.__dbg;
@@ -863,6 +872,7 @@
       if (done) return;
       done = true;
       PLAYFAIL.gestureNeeded = !!needed;
+      PLAYFAIL.probed = true;
       try { if (a) { a.pause(); a.removeAttribute("src"); } } catch (e) { }
       if (cb) cb(PLAYFAIL.gestureNeeded);
     }
@@ -888,11 +898,45 @@
   /* When another app takes the output for good, the user decides - not us. Shown only when
      they are actually looking at the app: in the background the notification already
      carries the same two ways out (Play to take it back, Stop to end it). */
+  /* A one-line note that fades: for things the user should know but never asked about. */
+  var noteTimer = null;
+  function note(text, ms) {
+    var el = $("#wrNote");
+    if (!el) return false;
+    el.textContent = text;
+    el.classList.add("wr-show");
+    if (noteTimer) window.clearTimeout(noteTimer);
+    noteTimer = window.setTimeout(function () {
+      el.classList.remove("wr-show");
+      noteTimer = null;
+    }, ms || 7000);
+    return true;
+  }
+
+  function closeNote() {
+    var el = $("#wrNote");
+    if (el) el.classList.remove("wr-show");
+  }
+
+  /* The dialog is for one thing only: another app took the output while the radio was
+     playing. A loss that comes straight back AFTER the user has already answered means the
+     system is flapping - asking again would be a dialog the user cannot satisfy, and that
+     is exactly what trapped v1.4.0 (ask, answer, refuse, ask). Say it quietly instead. A
+     fresh take-over later still gets a fresh dialog. */
+  var ASK = { at: 0, answeredAt: 0, count: 0 };
+
   function askContention() {
     var box = $("#wrAsk");
     if (!box) return false;
+    var now = Date.now();
+    if (!FOCUS.askPending && ASK.answeredAt && now - ASK.answeredAt < 8000) {
+      note("Another app keeps taking the sound \u2014 press play when you want the radio back.");
+      return false;
+    }
     if (doc.hidden) { FOCUS.askPending = true; return false; }
     FOCUS.askPending = false;
+    ASK.at = now;
+    ASK.count++;
     box.classList.add("wr-show");
     return true;
   }
@@ -904,6 +948,7 @@
 
   function answerContention(what) {
     closeAsk();
+    ASK.answeredAt = Date.now();         // the moment the user answered, for the flap guard
     if (what === "resume") {
       /* taking the sound back is the service's job (it owns the focus request) */
       if (host && host.resume) { try { host.resume(); return true; } catch (e) { } }
@@ -961,8 +1006,9 @@
       ? (playable.toLocaleString() + " of " + total.toLocaleString() + " playable on this device")
       : "catalogue not loaded yet");
 
-    row(PLAYFAIL.gestureNeeded ? "warn" : "ok", "Start without a tap",
-        PLAYFAIL.gestureNeeded ? "this device needs play to be pressed" : "allowed");
+    row(PLAYFAIL.probed ? (PLAYFAIL.gestureNeeded ? "warn" : "ok") : "info", "Start without a tap",
+        !PLAYFAIL.probed ? "not tested yet \u2014 Run again to find out (it plays nothing)"
+        : (PLAYFAIL.gestureNeeded ? "this device needs play to be pressed" : "allowed"));
 
     var st = false;
     try {
@@ -991,8 +1037,9 @@
     if (!box) return null;
     var rows = checkRows(), bad = 0;
     box.innerHTML = rows.map(function (r) {
-      if (r.s !== "ok") bad++;
-      return '<div class="wr-crow ' + r.s + '"><b>' + (r.s === "ok" ? "\u2713" : "!") +
+      if (r.s === "warn") bad++;
+      return '<div class="wr-crow ' + r.s + '"><b>' +
+             (r.s === "ok" ? "\u2713" : (r.s === "info" ? "\u00b7" : "!")) +
              "</b><i>" + r.l + "</i><span>" + r.d + "</span></div>";
     }).join("");
     var head = $("#wrCheckHead");
@@ -1077,7 +1124,11 @@
   var sheet = buildSheet();
   sheetEl = sheet;
   buildAsk();
-  probeAutoplay();          // only the device can say whether a stream needs a tap
+  /* No audio is touched at startup. v1.4.0 probed whether a tap is needed by playing
+     silence on launch - with no user gesture the WebView can refuse that probe, which
+     falsely marked the device as needing a tap AND poked the device's audio focus at
+     exactly the wrong moment. The answer now comes from a real failure, or from the
+     on-demand check (which runs with a gesture, so it tells the truth). */
   if (sheet) {
     var ctl = sheetController(sheet);
     sheetCtl = ctl;
@@ -1158,8 +1209,15 @@
       return !!b && b.classList.contains("wr-show");
     },
     probe: probeAutoplay,
+    askReset: function () {
+      /* test surface: clear the take-over episode so a fresh one can be driven deterministically */
+      ASK.at = 0; ASK.answeredAt = 0; FOCUS.askPending = false;
+      return true;
+    },
+    askCount: function () { return ASK.count; },
     playfail: function () {
-      return { last: PLAYFAIL.last, gestureNeeded: PLAYFAIL.gestureNeeded, unsupported: PLAYFAIL.unsupported };
+      return { last: PLAYFAIL.last, gestureNeeded: PLAYFAIL.gestureNeeded,
+               unsupported: PLAYFAIL.unsupported, probed: PLAYFAIL.probed };
     },
     focusState: function () {
       return { lastKind: FOCUS.lastKind, refused: FOCUS.refused, needsTap: FOCUS.needsTap };

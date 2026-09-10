@@ -29,11 +29,14 @@ version.
   your filters, and flashes the one it picked.
 - **A static header.** The site's "Header" collapse control is gone in the app: title,
   stats and tagline are always visible.
-- **Shares the sound with the rest of the phone.** It takes audio focus when you press
-  play: a call pauses the stream and it reconnects the station you were on afterwards, a
-  navigation prompt ducks the radio (stream intact, so no reconnect gap), and another app
-  taking the output for good is left to it. A focus pause keeps the notification, with a
-  Play button and the reason on it, instead of vanishing mid-call.
+- **Shares the sound with the rest of the phone.** It asks for audio focus when you press
+  play and follows the system's verdict: a call pauses the stream and it reconnects the
+  station you were on afterwards, a navigation prompt ducks the radio (stream intact, so no
+  reconnect gap), and another app taking the output for good brings up a choice — continue
+  here, stay paused, or stop. A pause keeps the notification, with a Play button and the
+  reason on it. Focus is treated as advice, never as permission: some devices refuse the
+  request with nothing else playing, and there the radio keeps playing and says so once,
+  quietly, instead of blocking you out of your own music.
 - **Cleartext streams kept.** Android blocks `http://` by default; the network security
   config allows it, because 8,330 of the 47,994 stations are cleartext. HTTPS stations
   are unaffected and certificate checks are *not* bypassed.
