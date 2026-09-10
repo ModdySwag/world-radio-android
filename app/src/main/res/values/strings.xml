@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MODDYS World Radio</string>
+    <string name="channel_name">Playback</string>
+    <string name="channel_desc">Keeps the radio stream playing while the app is in the background</string>
+    <string name="notification_tagline">MODDYS World Radio — SPRAY IT LOUD</string>
+</resources>

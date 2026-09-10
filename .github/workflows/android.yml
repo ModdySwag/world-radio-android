@@ -1,0 +1,70 @@
+name: Build APK
+
+# Builds a side-loadable debug APK on every push. No local Android toolchain needed -
+# that is the whole point of doing it here rather than on the dev machine.
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      sync_from_site:
+        description: 'Pull the latest web app from https://moddys.net before building'
+        type: boolean
+        default: false
+
+jobs:
+  apk:
+    name: Debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Ensure the exact SDK components this build targets
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      # Optional: ship whatever is live right now instead of the committed snapshot.
+      - name: Refresh the web app from the live site
+        if: ${{ inputs.sync_from_site == true }}
+        run: python3 tools/sync-assets.py --from-url
+
+      - name: Verify the bundled web app is complete
+        run: |
+          set -e
+          for f in index.html stations.js countries.js _android_shim.js; do
+            test -s "app/src/main/assets/www/$f" || { echo "missing asset: $f"; exit 1; }
+          done
+          grep -q "stations.js" app/src/main/assets/www/index.html
+          echo "assets ok"
+
+      - name: Build
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Show what was produced
+        run: ls -la app/build/outputs/apk/debug/
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: world-radio-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error

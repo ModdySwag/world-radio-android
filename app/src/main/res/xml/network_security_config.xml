@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  8,330 of the 47,994 stations in this catalogue stream over plain http://
+  (39,664 are https). Android blocks cleartext by default, which would make those
+  stations fail silently - so cleartext is allowed app-wide here on purpose.
+
+  HTTPS stations are unaffected, and no certificate validation is bypassed: a stream
+  with a broken cert still fails, and the app surfaces the error rather than hiding it.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

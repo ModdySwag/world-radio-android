@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="MODDYS World Radio — browse and play thousands of internet radio stations by country, genre and language. No account, no tracking.">
+<meta name="robots" content="index, follow">
+<title>MODDYS World Radio — SPRAY IT LOUD</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📻</text></svg>">
+<style>
+:root{
+  --bg:#101117; --bg2:#171824; --panel:#1a1b28; --panel2:#22233a; --line:#2e3050;
+  --tx:#f4f1ea; --mut:#9aa0b8;
+  --pink:#ff3ea5; --cyan:#1fe3ff; --lime:#c9ff3d; --orange:#ff9f1c; --purp:#a06bff; --yel:#ffe14d;
+  --ok:#7dffa8; --warn:#ffb454;
+  --rough:7px 18px 8px 20px/22px 6px 24px 8px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Helvetica Neue",sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.09'/%3E%3C/svg%3E")}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.16;
+  background:
+   radial-gradient(260px 120px at 8% 12%, rgba(255,62,165,.55), transparent 70%),
+   radial-gradient(300px 160px at 92% 8%, rgba(31,227,255,.4), transparent 70%),
+   radial-gradient(340px 190px at 85% 88%, rgba(201,255,61,.28), transparent 70%),
+   radial-gradient(240px 130px at 12% 85%, rgba(255,159,28,.3), transparent 70%)}
+.spraybar{position:fixed;top:0;left:0;right:0;height:7px;z-index:90;display:flex}
+.spraybar i{flex:1;display:block}
+.spraybar i:nth-child(1){background:var(--pink)}.spraybar i:nth-child(2){background:var(--orange)}
+.spraybar i:nth-child(3){background:var(--yel)}.spraybar i:nth-child(4){background:var(--lime)}
+.spraybar i:nth-child(5){background:var(--cyan)}.spraybar i:nth-child(6){background:var(--purp)}
+.wrap{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:26px 16px 120px}
+header{display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:4px 0 14px}
+h1{margin:0;font-size:clamp(26px,4.6vw,44px);line-height:.95;font-weight:900;letter-spacing:-1px;text-transform:uppercase;
+  color:#fff;transform:rotate(-1.2deg);
+  text-shadow:3px 3px 0 var(--pink),6px 6px 0 rgba(0,0,0,.45)}
+h1 .brand{font-size:1.08em;letter-spacing:.2px;color:#fff;text-shadow:2px 2px 0 var(--lime),5px 5px 0 var(--pink),8px 8px 0 rgba(0,0,0,.45)}
+h1 .g{color:var(--lime)}h1 .o{color:var(--cyan)}
+header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-transform:uppercase;font-size:12px;letter-spacing:1px;
+  color:#0c0d14;background:linear-gradient(90deg,var(--yel),var(--lime));padding:6px 12px;border-radius:3px;box-shadow:4px 4px 0 rgba(0,0,0,.4)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{background:rgba(30,32,58,.8);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--mut)}
+.chip b{color:var(--tx);font-weight:700}
+.toolbar{position:sticky;top:6px;z-index:50;padding:8px 0 10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  background:linear-gradient(180deg,rgba(16,17,23,.92) 0%,rgba(16,17,23,.92) 78%,transparent)}
+#q{flex:1 1 300px;background:#0d0e16;border:2px solid var(--line);color:var(--tx);border-radius:12px;padding:10px 14px;font-size:15px;outline:none;transition:border-color .12s,box-shadow .12s}
+#q:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(31,227,255,.18)}
+select{background:#0d0e16;border:2px solid var(--line);color:var(--tx);border-radius:10px;padding:8px 9px;font-size:13.5px;outline:none;max-width:220px}
+select:focus{border-color:var(--purp)}
+.btn{appearance:none;border:2px solid var(--line);background:#10111c;color:var(--tx);border-radius:10px;padding:8px 13px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
+  transition:transform .08s,box-shadow .08s,background .12s,border-color .12s}
+.btn:hover{border-color:var(--cyan);box-shadow:3px 3px 0 rgba(31,227,255,.35);transform:translate(-1px,-1px)}
+.btn:active{transform:translate(1px,1px);box-shadow:none}
+.btn.pink{border-color:var(--pink);color:#ffd3ea}.btn.pink:hover{background:var(--pink);color:#1a0312;box-shadow:3px 3px 0 rgba(255,62,165,.4)}
+.facets{background:rgba(24,25,40,.85);border:1px solid var(--line);border-radius:16px 8px 16px 8px;padding:12px 14px;margin:2px 0 14px}
+.frow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.frow .lbl{color:var(--mut);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;width:64px;flex:0 0 auto}
+.ftag{border:2px dashed rgba(255,255,255,.28);background:rgba(20,21,36,.85);color:#e6e9ff;border-radius:6px 14px 6px 14px;padding:3px 11px;font-size:12.5px;cursor:pointer;user-select:none;font-weight:600;transition:all .1s}
+.ftag:hover{border-style:solid;border-color:var(--cyan);transform:rotate(-1deg)}
+.ftag.on{background:var(--pink);border:2px solid var(--pink);color:#fff;box-shadow:2px 2px 0 rgba(0,0,0,.4);border-radius:14px 6px 14px 6px}
+.ftag .n{opacity:.75;margin-left:5px;font-size:11px}
+#popRow.collapsed,.frow.sec-hidden,.frow.sec-empty,#facets.hidden{display:none}
+header.compact h1{font-size:22px;transform:none;text-shadow:2px 2px 0 var(--pink)}
+header.compact h1 .brand{font-size:1.06em;text-shadow:2px 2px 0 var(--lime)}
+header.compact .chips,header.compact .spraytag{display:none}
+header .chips{flex:1 1 100%}
+.fhead{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.fsec{font-weight:800;letter-spacing:.3px}
+.fsec.off{border-style:dashed;opacity:.7}
+.factive{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+.fchip{border:2px solid var(--purp);background:rgba(160,107,255,.14);color:#e2d6ff;border-radius:6px 14px 6px 14px;padding:2px 9px;font-size:12px;font-weight:700;cursor:pointer}
+.fchip:hover{background:var(--purp);color:#fff}
+.fclear{border:2px solid var(--warn);background:rgba(255,159,28,.12);color:#ffd9a3;border-radius:6px 14px 6px 14px;padding:2px 10px;font-size:12px;font-weight:800;cursor:pointer}
+.fclear:hover{background:var(--warn);color:#231a05}
+#toTop{position:fixed;right:16px;bottom:88px;z-index:55;width:44px;height:44px;border-radius:50%;border:2px solid var(--pink);
+  background:rgba(13,14,22,.92);color:#fff;font-size:16px;cursor:pointer;display:none}
+#toTop.show{display:block}
+#toTop:hover{background:var(--pink);color:#1a0312}
+.more,.less{color:var(--cyan);font-size:12px;cursor:pointer;border:none;background:none;padding:4px 2px;font-weight:700}
+.resbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin:14px 0 8px;font-size:13.5px;color:var(--mut)}
+.resbar b{color:var(--tx)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.card{background:linear-gradient(160deg,#191a29 0%,#14151f 100%);border:1px solid rgba(255,255,255,.14);border-radius:var(--rough);padding:12px 14px;display:flex;flex-direction:column;gap:8px;position:relative;transition:border-color .12s,box-shadow .12s,transform .08s}
+.card:hover{border-color:var(--pink);box-shadow:4px 4px 0 rgba(255,62,165,.22);transform:translate(-1px,-1px)}
+.card::before{content:"";position:absolute;top:-1px;left:-1px;right:calc(100% - 26px);height:4px;background:linear-gradient(90deg,var(--pink),var(--orange),var(--yel));opacity:0;transition:opacity .15s}
+.card:hover::before{opacity:1;right:-1px}
+.row1{display:flex;gap:10px;align-items:center;min-width:0}
+.fav{width:44px;height:44px;border-radius:12px 4px 12px 4px;object-fit:cover;background:#0b0c12;flex:0 0 auto;border:1px solid var(--line)}
+.h1{min-width:0;flex:1}
+.nm{font-weight:800;font-size:14.5px;color:var(--tx);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.nm:hover{color:var(--cyan)}
+.loc{font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.tag{background:#262842;border-radius:5px 11px 5px 11px;padding:1px 8px;font-size:11px;font-weight:600}
+.tag.t0{color:#ffd0ea;background:rgba(255,62,165,.16)}
+.tag.t1{color:#c9f5ff;background:rgba(31,227,255,.14)}
+.tag.t2{color:#eaffb8;background:rgba(201,255,61,.13)}
+.tag.t3{color:#ffe0ba;background:rgba(255,159,28,.15)}
+.tag.t4{color:#e5d7ff;background:rgba(160,107,255,.16)}
+.meta{display:flex;flex-wrap:wrap;gap:3px 12px;font-size:12px;color:var(--mut)}
+.meta b{color:var(--tx)}
+.meta .up{color:var(--ok)}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;align-items:center}
+.iconbtn{background:none;border:2px solid var(--line);color:var(--mut);border-radius:8px;cursor:pointer;font-size:14px;line-height:1;padding:6px 8px}
+.iconbtn:hover{color:var(--yel);border-color:var(--yel)}
+.icongrp{margin-left:auto;display:flex;gap:4px;align-items:center;flex:0 0 auto}
+.iconbtn.star{color:var(--mut)}
+.iconbtn.star.on{color:#151605;background:var(--yel);border-color:var(--yel)}
+#btnFav.on{background:var(--yel);border:2px solid var(--yel);color:#151605;border-radius:14px 6px 14px 6px}
+#btnLocal.on{background:var(--cyan);border:2px solid var(--cyan);color:#04161a;border-radius:14px 6px 14px 6px}
+.play{background:rgba(255,62,165,.14);border-color:var(--pink);color:#ff9fd2}
+.play:hover{background:var(--pink);color:#1a0312;box-shadow:3px 3px 0 rgba(255,62,165,.4)}
+.play.on{background:var(--pink);border-color:#fff;color:#fff;animation:blink 1.1s steps(2) infinite}
+@keyframes blink{50%{background:var(--lime);border-color:var(--lime);color:#151605}}
+.pager{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+.pager button{background:#10111c;border:2px solid var(--line);color:var(--tx);border-radius:8px;min-width:30px;padding:4px 8px;cursor:pointer;font-size:12.5px;font-weight:700}
+.pager button.cur{background:var(--cyan);border-color:var(--cyan);color:#04161a}
+.pager button:disabled{opacity:.3;cursor:default}
+.pager input{width:54px;background:#0d0e16;border:2px solid var(--line);color:var(--tx);border-radius:8px;padding:4px 6px;text-align:center;font-size:12.5px}
+.empty{color:var(--mut);text-align:center;padding:44px 0;font-size:15px}
+a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
+
+/* player dock (bottom) */
+#dock{position:fixed;bottom:0;left:0;right:0;z-index:40;display:none}
+#dock .wrap-dock{display:flex;gap:0;align-items:stretch;justify-content:center;padding:8px 12px;pointer-events:none}
+#dock .dwin{pointer-events:auto;background:rgba(13,14,22,.96);border:2px solid var(--purp);border-bottom:none;border-radius:16px 16px 0 0;
+  box-shadow:0 -6px 30px rgba(0,0,0,.55);width:min(430px,100%);overflow:hidden}
+#dock .dwin .head{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:default;background:linear-gradient(90deg,var(--purp),var(--pink))}
+#dock .dwin .head span{font-weight:900;font-size:11px;letter-spacing:1px;color:#fff;text-transform:uppercase;flex:1}
+#dock .dwin .head button{border:none;background:rgba(0,0,0,.3);color:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;font-weight:800}
+#dock iframe{border:0;width:100%;height:480px;display:block}
+#dock.small iframe{height:330px}#dock.med iframe{height:480px}#dock.large iframe{height:620px}
+@media(max-width:560px){#dock .dwin{width:100%;border-radius:0}}
+
+/* bottom mini player bar */
+#bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;align-items:center;gap:10px;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));
+  background:rgba(13,14,22,.97);border-top:3px solid;border-image:linear-gradient(90deg,var(--pink),var(--orange),var(--yel),var(--lime),var(--cyan),var(--purp)) 1}
+#bar .art{width:46px;height:46px;border-radius:10px 4px 10px 4px;object-fit:cover;border:1px solid var(--line);flex:0 0 auto}
+#bar .nm{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;cursor:pointer}
+#bar .nm:hover{color:var(--cyan)}
+#bar .who{font-size:11px;color:var(--mut)}
+.bctrl{border:2px solid var(--line);background:#10111c;color:var(--tx);border-radius:50%;width:42px;height:42px;font-size:17px;cursor:pointer;flex:0 0 auto;line-height:1}
+.bctrl:hover{border-color:var(--cyan)}
+#bPlay.playing{background:var(--lime);border-color:var(--lime);color:#151605}
+#bPlay.pop{background:var(--purp);border-color:var(--purp);color:#fff}
+#volWrap{display:flex;align-items:center;gap:6px;flex:0 1 170px;min-width:110px}
+#vol{flex:1;accent-color:var(--pink)}
+#volPct{font-size:11px;color:var(--mut);min-width:30px;text-align:right}
+.badge{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;border-radius:999px;padding:3px 8px;border:1px solid var(--line);color:var(--mut)}
+.badge.on{background:var(--purp);border-color:var(--purp);color:#fff;animation:blink 2s steps(2) infinite}
+@media(max-width:700px){#bar .who,#bar .badge,#btnBarSite,#barStop{display:none}}
+#viz{display:none;flex:1 1 240px;min-width:110px;max-width:560px;height:44px;border:2px solid var(--line);border-radius:10px;background:#0b0c12}
+#btnViz.pink{border-color:var(--pink);color:var(--pink)}
+@media(max-width:900px){#viz{display:none !important}}
+
+/* modal */
+#modal{position:fixed;inset:0;background:rgba(5,6,10,.78);z-index:80;display:none;align-items:center;justify-content:center;padding:18px}
+#modal .box{background:linear-gradient(160deg,#1d1e30,#14151f);border:2px solid var(--purp);border-radius:18px 6px 18px 6px;max-width:560px;width:100%;max-height:88vh;overflow:auto;padding:20px;box-shadow:8px 8px 0 rgba(0,0,0,.5)}
+#modal .mh{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+#modal .nm{font-size:19px;white-space:normal}
+#modal table{width:100%;border-collapse:collapse;font-size:13.5px;margin:6px 0 14px}
+#modal td{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+#modal td:first-child{color:var(--mut);width:100px;font-weight:700}
+.macts{display:flex;gap:8px;flex-wrap:wrap}
+code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-break:break-all}
+#toast{position:fixed;bottom:64px;left:50%;transform:translateX(-50%);background:#241207;border:2px solid var(--warn);color:#ffe2bd;border-radius:12px;padding:9px 16px;font-size:13px;display:none;max-width:84vw;z-index:95;font-weight:600}
+/* persistent notice bar: capability/error messages the user should not miss */
+#notice{display:none;position:fixed;top:0;left:0;right:0;z-index:97;align-items:flex-start;gap:10px;
+  background:linear-gradient(90deg,rgba(31,227,255,.18),rgba(160,107,255,.16));border-bottom:2px solid var(--cyan);
+  color:#e8f7ff;padding:9px 12px;font-size:13px;line-height:1.45;box-shadow:0 6px 24px rgba(0,0,0,.45)}
+#notice.show{display:flex}
+#notice.warn{background:linear-gradient(90deg,rgba(255,159,28,.24),rgba(255,62,165,.18));border-bottom-color:var(--orange);color:#fff1de}
+#notice span{flex:1}
+#notice a{color:var(--lime);font-weight:700}
+#notice button{background:none;border:0;color:inherit;font-size:15px;font-weight:800;cursor:pointer;padding:0 4px}
+#notice .nbtn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.32);border-radius:8px;padding:2px 9px;font-size:12px;cursor:pointer;margin-left:6px}
+.kbadge{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:6px;font-size:10px;font-weight:800;
+  letter-spacing:.04em;background:rgba(255,159,28,.18);border:1px solid var(--orange);color:#ffd9a8;vertical-align:middle}
+.imgfail{display:none}
+#spin{position:fixed;inset:0;background:var(--bg);z-index:100;display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:center;color:var(--mut)}
+#spin .ring{width:38px;height:38px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--pink);animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+::selection{background:var(--pink);color:#fff}
+@media (prefers-reduced-motion: reduce){ .play.on{animation:none} .badge.on{animation:none} #spin .ring{animation:none} }
+*{scrollbar-width:thin;scrollbar-color:var(--purp) #0d0e16}
+</style>
+</head>
+<body>
+<noscript>
+<div style="position:fixed;inset:0;background:#101117;color:#f4f1ea;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;font:16px/1.65 system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;z-index:999">
+  <div style="max-width:540px">
+    <h1 style="margin:0 0 12px;font-size:26px">🎧 MODDYS World Radio needs JavaScript</h1>
+    <p style="margin:0;color:#9aa0b8">This site browses and plays 47,994 radio stations and needs JavaScript to do it. Please enable JavaScript for this site (Settings → Privacy and security → Site settings → JavaScript) and reload the page.</p>
+  </div>
+</div>
+</noscript>
+<div class="spraybar"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+<div id="spin"><div class="ring"></div><div>Spraying on <span id="spinN">…</span> stations…</div></div>
+
+<div class="wrap">
+<header id="hdrHead">
+  <h1><span class="brand">MODDY</span>S <span class="o">WORLD RADIO</span><br>SPRAY <span class="g">IT LOUD</span></h1>
+  <span class="spraytag">48k stations · zero ads</span>
+  <button class="btn" id="btnHdr" title="Collapse / expand the header (shortcut: h)">⌃ Header</button>
+  <div class="chips" id="hdr"></div>
+</header>
+
+<div class="toolbar">
+  <input id="q" type="search" placeholder="Search stations by name, genre, country, language…  ( / focuses )" autocomplete="off">
+  <select id="selCountry" title="Country"></select>
+  <select id="selCodec" title="Format"><option value="">Any format</option></select>
+  <select id="selBit" title="Minimum bitrate">
+    <option value="0" selected>Any bitrate</option><option value="64">≥ 64 kbps</option>
+    <option value="128">≥ 128 kbps</option><option value="192">≥ 192 kbps</option>
+  </select>
+  <select id="selSort" title="Sort">
+    <option value="k">Most clicked</option><option value="v">Most voted</option>
+    <option value="n">Name A–Z</option><option value="b">Bitrate</option>
+  </select>
+  <button class="btn" id="btnReset">Reset</button>
+  <button class="btn" id="btnFacets" aria-expanded="true" title="Show / hide the filter panel (shortcut: f)">🧰 Filters ▾</button>
+</div>
+
+<div class="facets" id="facets">
+  <div class="fhead">
+    <button class="ftag fsec" data-sec="country" aria-expanded="true">▾ Country</button>
+    <button class="ftag fsec" data-sec="genre" aria-expanded="true">▾ Genre</button>
+    <button class="ftag fsec" data-sec="lang" aria-expanded="true">▾ Language</button>
+    <button class="ftag" id="btnFav" title="Show only your saved stations (shortcut: s)">⭐ Saved</button>
+    <button class="ftag" id="btnPlayable" title="Only list stations this browser can actually play — HLS, playlist files and http-only streams are hidden">✅ Plays here</button>
+    <button class="ftag" id="btnLocal" hidden title="Filter to stations from your country">📍 Local</button>
+    <span class="factive" id="fActive"></span>
+    <button class="fclear" id="btnClearF" hidden title="Remove every active filter">Clear filters ✕</button>
+  </div>
+  <div class="frow" id="popRow"></div>
+  <div class="frow" id="tagRow" style="margin-top:8px"></div>
+  <div class="frow sec-empty" id="langRow" style="margin-top:8px"></div>
+</div>
+
+<div class="resbar"><span id="cntLine">…</span><span class="pager" id="pagerTop"></span></div>
+<div class="grid" id="list"></div>
+<div class="resbar" style="margin-top:14px"><span></span><span class="pager" id="pagerBottom"></span></div>
+</div>
+
+<div id="dock"><div class="wrap-dock"><div class="dwin">
+  <div class="head"><span>🎧 mini player</span><button id="dockS">S</button><button id="dockM">M</button><button id="dockL">L</button><button id="dockClose">✕</button></div>
+  <iframe id="dockFrame" title="mini player"></iframe>
+</div></div></div>
+
+<div id="bar">
+  <img class="art" id="bArt" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='80'%3E📻%3C/text%3E%3C/svg%3E">
+  <div style="min-width:0;flex:0 1 auto">
+    <div class="nm" id="bName" title="Station details">Pick a station</div>
+    <div class="who" id="bMeta"></div>
+  </div>
+  <span class="badge" id="bState" style="display:none"></span>
+  <button class="bctrl" id="bPlay" title="Play / pause">▶</button>
+  <button class="bctrl" id="bStop" title="Stop">⏹</button>
+  <span id="volWrap"><input type="range" id="vol" min="0" max="1" step="0.01"><span id="volPct">90%</span></span>
+  <button class="btn" id="btnBarSite" style="padding:6px 10px">Website</button>
+  <button class="btn pink" id="btnPop" style="padding:6px 10px">⧉ Pop-out</button>
+  <button class="bctrl" id="btnViz" title="Visualiser: off — click to cycle 5 styles" style="width:38px;height:38px;font-size:15px">🎛</button>
+  <canvas id="viz" height="44" title="Decorative visualiser (radio streams are cross-origin, so this is a look, not a live spectrum)"></canvas>
+</div>
+
+<div id="modal"><div class="box">
+  <div class="mh" id="mHead"></div>
+  <div id="mBody"></div>
+  <div class="macts" id="mActs"></div>
+</div></div>
+<button id="toTop" title="Back to top">▲</button>
+<div id="toast"></div>
+<div id="notice" role="status" aria-live="polite"></div>
+
+<script src="countries.js"></script>
+<script src="stations.js"></script>
+<script>
+"use strict";
+/* ============================= helpers ============================= */
+if (!window.RB_META || !window.RB_STATIONS) {
+  const s = document.getElementById("spin");
+  if (s) s.innerHTML = '<div style="text-align:center;max-width:470px;padding:0 20px;line-height:1.65">'
+    + '<h1 style="font-size:22px;margin:0 0 10px">⚠ The station list could not be loaded</h1>'
+    + '<p style="margin:0 0 14px;color:#9aa0b8">This is usually a temporary glitch or a half-finished upload. '
+    + 'Please reload the page — if it keeps happening, the station data files (<b>stations.js</b> and <b>countries.js</b>) '
+    + 'are missing or incomplete on the server and need re-uploading.</p>'
+    + '<button id="reloadBtn" style="font:inherit;font-weight:800;cursor:pointer;background:linear-gradient(90deg,#c9ff3d,#ff3ea5);color:#0b0d12;border:0;border-radius:10px;padding:10px 18px">Reload the page</button></div>';
+  const rb = document.getElementById("reloadBtn"); if (rb) rb.onclick = () => location.reload();
+  document.body.dataset.ready = "1";
+  throw new Error("catalogue missing");
+}
+const META = window.RB_META, ALL = window.RB_STATIONS;
+const $ = s => document.querySelector(s);
+const fmt = n => (n ?? 0).toLocaleString();
+const esc = x => String(x ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const flag = cc => cc && /^[A-Za-z]{2}$/.test(cc) ? cc.toUpperCase().replace(/./g,c=>String.fromCodePoint(127397+c.charCodeAt(0))) : "🌐";
+const tokens = t => (t||"").split(",").map(x=>x.trim().toLowerCase()).filter(Boolean);
+const ccName = {}; META.countries.forEach(c=>ccName[c.cc]=c.c);
+const countryOf = s => (s.cc && ccName[s.cc]) || s.c || "Unknown";
+const normLang = l => (l||"").trim().toLowerCase();
+let tt; const toast = (m,ms=4200)=>{const t=$("#toast");t.textContent=m;t.style.display="block";clearTimeout(tt);tt=setTimeout(()=>t.style.display="none",ms)};
+function copyText(txt,label){const done=()=>toast((label||"Stream URL")+" copied.");const legacy=()=>{const ta=document.createElement("textarea");ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done()}catch(e){toast("Copy failed.")}ta.remove()};
+ if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(txt).then(done).catch(legacy);else legacy()}
+const ls = {
+  get(k,d){try{const v=localStorage.getItem("rbg-"+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
+  set(k,v){try{localStorage.setItem("rbg-"+k,JSON.stringify(v))}catch(e){}}
+};
+/* ================== environment detection & hardening ==================
+   Everything here is about surviving real-world user setups: old browsers, private
+   mode (storage throws), blocked pop-ups, missing APIs, and browsers that simply
+   cannot play a given stream format. Failures become visible messages, never silence. */
+const CAP = (() => {
+  const el = document.documentElement;
+  let storage = false, bc = false, hls = false, audio = false;
+  try { localStorage.setItem("rbg-t","1"); localStorage.removeItem("rbg-t"); storage = true; } catch(e){ storage = false; }
+  try { bc = !!window.BroadcastChannel; } catch(e){ bc = false; }
+  try { const a = new Audio(); audio = typeof a.play === "function";
+        /* canPlayType alone lies here: desktop Chrome/Edge answer "maybe" for HLS without being able
+           to play it. Only Safari (all platforms) and Chrome/Edge on Android really demux HLS. */
+        const claims = !!(a.canPlayType && a.canPlayType("application/vnd.apple.mpegurl"));
+        const vendor = (navigator.vendor || ""), ua = (navigator.userAgent || "");
+        hls = claims && (/Apple/.test(vendor) || /Android/i.test(ua)); } catch(e){}
+  return {
+    https: location.protocol === "https:",
+    file: location.protocol === "file:",
+    storage, bc, audio, hls,
+    popup: typeof window.open === "function",
+    fs: !!(el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen),
+    legacy: !(window.fetch && window.Promise && Object.assign && Array.prototype.includes
+              && String.prototype.includes && document.querySelectorAll && window.addEventListener)
+  };
+})();
+window.__rbgFatal = false;
+function fallbackPanel(title, body){
+  const s = document.getElementById("spin");
+  if (s) s.innerHTML = '<div style="text-align:center;max-width:480px;padding:26px 20px;line-height:1.65">' +
+    '<h1 style="margin:0 0 12px;font-size:24px">' + title + '</h1><p style="margin:0;color:#9aa0b8">' + body + '</p></div>';
+  document.body.dataset.ready = "1";
+}
+if (CAP.legacy) { window.__rbgFatal = true; fallbackPanel("This browser is too old 🕸",
+  "MODDYS World Radio needs a current browser — Chrome, Edge, Firefox, Safari, Opera or Brave from the last few years. Please update your browser (or open this page in another one) and everything will work normally.");
+  throw new Error("unsupported browser"); }
+if (!CAP.audio) { window.__rbgFatal = true; fallbackPanel("Audio isn't available 🎧",
+  "This browser can't play audio streams, so the radio can't start. Please try a current browser such as Chrome, Edge, Firefox, Safari, Opera or Brave.");
+  throw new Error("no audio support"); }
+/* one visible, dismissable notice bar for anything degraded — never a silent failure */
+let _errN = 0;
+function notice(html, kind, once){
+  const bar = document.getElementById("notice"); if (!bar) return;
+  if (once && bar.dataset.kind === (kind||"")) return;
+  const extra = bar.dataset.kind || "", keepKind = kind || "";
+  bar.dataset.kind = keepKind || extra;
+  bar.innerHTML = "<span>" + html + "</span><button type=\"button\" id=\"noticeX\" aria-label=\"Dismiss message\">✕</button>";
+  bar.className = "show " + (kind || "");
+  const x = document.getElementById("noticeX"); if (x) x.onclick = () => { bar.className = ""; bar.dataset.kind = ""; };
+}
+window.addEventListener("error", () => { if (window.__rbgFatal || ++_errN > 3) return;
+  notice("⚠ Something went wrong on this page. If anything misbehaves, <b>reload</b> (Ctrl/Cmd+R) — your saved stations are safe.", "warn", true); });
+window.addEventListener("unhandledrejection", () => { if (window.__rbgFatal || ++_errN > 3) return;
+  notice("⚠ A background action failed. Reloading the page usually clears it.", "warn", true); });
+if (!CAP.storage) notice("🔒 Your browser is blocking site storage (private/incognito mode, or cookies blocked). The radio still works, but <b>saved stations, volume and layout choices won't be remembered</b>.", "info", true);
+if (!CAP.bc && CAP.storage) notice("ℹ This browser has no direct window-to-window messaging, so the mini player and the page sync through shared storage instead — everything still works.", "info", true);
+if (!CAP.bc && !CAP.storage) notice("ℹ Windows can't sync in this browser setup, so the mini player works as its own player rather than mirroring the page.", "info", true);
+if (CAP.file) notice("ℹ You're viewing the files directly from disk (file://). Everything plays, but the mini player can only sync when the site is opened over http/https — as it will be on the web.", "info", true);
+/* --- can THIS browser play THIS station? 1 yes · 2 HLS-only · 3 playlist file · 4 unencrypted http --- */
+const KIND_TEXT = {
+  2: { tag:"HLS",  why:"it streams in HLS format, which only Safari and Android Chrome play natively" },
+  3: { tag:"PLAYLIST", why:"its stream is a .pls/.m3u playlist file, which no web page can open (a desktop player such as VLC can)" },
+  4: { tag:"HTTP", why:"it only offers an unencrypted (http) stream, which your browser blocks on a secure https page" }
+};
+function playKind(s){
+  const u = (s && s.u) || ""; if (!u) return 3;
+  if (CAP.https && u.slice(0, 7) === "http://") return 4;
+  const p = u.split("?")[0].toLowerCase();
+  if (/\.m3u8$/.test(p)) return CAP.hls ? 1 : 2;
+  if (/\.(pls|m3u|asx|wax|wpl|ram|mpd)$/.test(p)) return 3;
+  return 1;
+}
+const playable = s => playKind(s) === 1;
+function unplayableNotice(s, k){
+  const t = KIND_TEXT[k] || KIND_TEXT[3];
+  toast("⚠ " + s.n + " can't play in this browser — " + t.why + ".", 7000);
+  notice("⚠ <b>" + esc(s.n) + "</b> can't play here: " + t.why + "." +
+    (s.hp ? " <a href=\"" + esc(s.hp) + "\" target=\"_blank\" rel=\"noopener noreferrer\">Open the station's website ↗</a>" : "") +
+    "<button type=\"button\" class=\"nbtn\" id=\"noticeTry\">try anyway</button>", "warn");
+  const b = document.getElementById("noticeTry");
+  if (b) b.onclick = () => { document.getElementById("notice").className = ""; requestPlay(M(s)); };
+}
+let _unplayable = -1;
+const unplayableCount = () => { if(_unplayable < 0){ let n = 0; for(let i=0;i<ALL.length;i++) if(!playable(ALL[i])) n++; _unplayable = n; } return _unplayable; };
+/* Station logos: the catalogue gives us the broadcaster's own logo URL. A couple of percent of them
+   sit behind Google's image proxy (gstatic / googleusercontent), which would mean requests to Google
+   from a page that promises no third parties. Those logos are dropped (the card falls back to the flag
+   and station name); every other logo host — the station's own site, Wikimedia, Firebase storage, etc.
+   — is left alone. Set STRIP_PROXY_LOGOS to false to show them too. */
+const STRIP_PROXY_LOGOS = true;
+const PROXY_LOGO_HOST = /(^|\.)(gstatic\.com|googleusercontent\.com|ggpht\.com)$/;
+function logoURL(s){
+  const u = (s && s.f) || ""; if(!u || !STRIP_PROXY_LOGOS) return u;
+  try { return PROXY_LOGO_HOST.test(new URL(u, location.href).hostname.toLowerCase()) ? "" : u; } catch(e){ return u; }
+}
+/* images that fail to load (stations with dead logos) simply disappear — no broken-image icons */
+document.addEventListener("error", e => { const t = e.target; if(t && t.tagName === "IMG"){ t.removeAttribute("src"); t.classList.add("imgfail"); } }, true);
+/* ======================= cross-window channel ======================= */
+const CHAN = "rbg-v1";
+const channel = (() => {
+  if (window.BroadcastChannel) {
+    const c = new BroadcastChannel(CHAN);
+    return { post:m=>{try{c.postMessage(m)}catch(e){}}, on(fn){c.onmessage=e=>fn(e.data)}, close(){try{c.close()}catch(e){}} };
+  }
+  const KEY = "rbg-relay";
+  return { post(m){try{localStorage.setItem(KEY,JSON.stringify({m,t:Date.now(),r:Math.random()}))}catch(e){}},
+    on(fn){const h=e=>{if(e.key===KEY&&e.newValue){try{fn(JSON.parse(e.newValue).m)}catch(_){}}};
+      window.addEventListener("storage",h); return ()=>window.removeEventListener("storage",h)},
+    close(){} };
+})();
+/* presence: pop-outs watch the main tab's heartbeat for their status badge */
+setInterval(()=>ls.set("alive-main",Date.now()),2500);   // ls adds the rbg- prefix
+/* ============================== player ============================== */
+/* SINGLE-STREAM POLICY: exactly one window holds the <audio> element. Every other window
+   (pop-out, dock, extra tabs) is a remote control that sends commands to the owner.
+   Nothing is ever moved between windows, so opening/closing the pop-out or opening the
+   site in another tab can never restart or double the stream. */
+const audio = new Audio();
+audio.preload = "none";
+const CID = Math.random().toString(36).slice(2, 10);   // this window's id
+const KIND = "main";                                   // 'main' | 'pop'
+const P = { cur:null, playing:false, vol: ls.get("vol",0.9), mine:false, remoteKind:"" };
+audio.volume = P.vol;
+const M = s => ({ i:s.i,u:s.u,hp:s.hp||"",f:s.f||"",n:s.n,c:s.c,cc:s.cc,s:s.s||"",l:s.l||"",x:s.x||"",b:s.b||0,v:s.v||0,k:s.k||0 });
+const ownRec  = () => ls.get("owner", null);
+const ownFresh= r => !!(r && (Date.now() - (r.ts||0)) < 4000);
+const ownMine = () => { const r=ownRec(); return !!(r && r.id===CID && ownFresh(r)); };
+const relOwner= () => { const r=ownRec(); return ownFresh(r) ? r : null; };
+function setOwner(playing){ ls.set("owner", { id:CID, kind:KIND, ts:Date.now(), playing:!!playing, uuid:(P.cur&&P.cur.i)||null }); }
+function bcastState(){ channel.post({type:"state", from:CID, kind:KIND, playing:P.playing, mine:ownMine(), vol:P.vol, M:P.cur}); }
+audio.addEventListener("error",()=>{ if(P.mine&&P.playing){ audioStop(); toast("⚠ That stream won't play here — try another station."); } });
+function setPlaying(on){ P.playing=on; P.mine=ownMine();
+  const b=$("#bPlay");
+  b.classList.toggle("playing", !!on&&P.mine); b.classList.toggle("pop", !!on&&!P.mine);
+  b.textContent = on ? (P.mine?"⏸":"●") : "▶";
+  const st=$("#bState");
+  st.style.display = on ? "" : "none";
+  if(on){ st.textContent = P.mine ? "playing here" : "playing in "+((P.remoteKind==="pop")?"pop-out":"another tab");
+          st.className = "badge "+(P.mine?"on":"remote"); }
+  syncPlayBtns(); }
+function setStation(m){ P.cur = m; if(!m){ $("#bName").textContent="Pick a station"; $("#bMeta").textContent=""; return; }
+  $("#bName").textContent = m.n; $("#bMeta").textContent = flag(m.cc)+" "+countryOf(m)+" · "+(m.l||"")+" · "+(m.x||"")+(m.b?" "+m.b+"kbps":"");
+  if(m.f){ const im=new Image(); im.onload=()=>{$("#bArt").src=m.f}; im.src=m.f; }
+  ls.set("last",{m,ts:Date.now()}); }
+/* --- audio control: only an owner ever touches the element --- */
+let lastPlayErr = "", handover = false;
+function audioStart(m){ setStation(m); P.mine=true; setOwner(true);
+  audio.src=m.u; audio.volume=P.vol;
+  audio.play().then(()=>{ lastPlayErr=""; setPlaying(true); bcastState(); })
+    .catch(e=>{ lastPlayErr=(e&&e.name)||"error"; setPlaying(false); setOwner(false); P.mine=false;
+      toast("⚠ Your browser blocked playback — press ▶ to start."); bcastState(); }); }
+function audioStop(silent){ handover=false; lastPlayErr=""; try{audio.pause()}catch(e){} audio.removeAttribute("src");
+  if(ownMine()) setOwner(false); P.mine=false; setPlaying(false); bcastState(); if(!silent) toast("Playback stopped."); }
+/* --- intents: available in every window --- */
+function claimAndPlay(m){ if(ownMine()){ audioStart(m); addRecent(m); return; }
+  setOwner(false);                                            // announce the takeover…
+  setTimeout(()=>{ const r=relOwner();                        // …then confirm we won it
+    if(r && r.id!==CID){ setStation(m); addRecent(m); P.remoteKind=r.kind||""; setPlaying(true); return; }
+    audioStart(m); addRecent(m); }, 300 + Math.floor(Math.random()*180)); }
+function requestPlay(m){ const r=relOwner();
+  if(r && r.id!==CID){ channel.post({type:"cmd",from:CID,cmd:"play",M:m});
+    setStation(m); addRecent(m); P.remoteKind=r.kind||""; P.mine=false; setPlaying(true); return; }
+  claimAndPlay(m); }
+function requestToggle(){ if(P.playing && ownMine()){ audioStop(); return; }
+  if(P.playing){ channel.post({type:"cmd",from:CID,cmd:"stop"}); P.mine=false; setPlaying(false); return; }
+  if(P.cur) requestPlay(P.cur); else toast("Pick a station first — hit ▶ on any card."); }
+function requestStop(){ if(ownMine()) audioStop(); else { channel.post({type:"cmd",from:CID,cmd:"stop"}); P.mine=false; setPlaying(false); } }
+/* stop touching the audio without stopping the music: another window is taking over */
+function releaseToOther(kind){ try{audio.pause()}catch(e){} audio.removeAttribute("src");
+  if(ownMine()) ls.set("owner", { id:CID, kind:KIND, ts:Date.now()-60000, playing:P.playing, uuid:(P.cur&&P.cur.i)||null });
+  P.mine=false; P.remoteKind=kind||"pop"; setPlaying(P.playing); bcastState(); }
+/* hand playback over when a window is about to disappear (main tab closed / reloaded) */
+window.addEventListener("pagehide",()=>{ if(ownMine()){
+  ls.set("owner", { id:CID, kind:KIND, ts:Date.now()-60000, playing:P.playing, uuid:(P.cur&&P.cur.i)||null });  // release immediately (sync write survives unload)
+  channel.post({type:"handoff", M:P.cur}); } });
+/* recents */
+const recents = () => ls.get("rec",[]);
+const metaMap = () => ls.get("meta",{});
+function addRecent(m){ const r=recents().filter(u=>u!==m.i); r.unshift(m.i); ls.set("rec",r.slice(0,24));
+  const mm=metaMap(); mm[m.i]=m; ls.set("meta",mm); channel.post({type:"recupd"}); }
+function recentList(){ const mm=metaMap(); return recents().map(u=>mm[u]).filter(Boolean); }
+/* favourites — "My stations" */
+let favSet = new Set(ls.get("fav",[]));
+const favList = () => ls.get("fav",[]);
+function saveFav(s){ const l=favList().filter(x=>x!==s.i); l.unshift(s.i); ls.set("fav", l.slice(0,300));
+  const mm=metaMap(); mm[s.i]=M(s); ls.set("meta", mm); favSet=new Set(ls.get("fav",[]));
+  channel.post({type:"favupd"}); toast("★ Saved to My stations"); refreshFavUI(); }
+function rmFav(i){ ls.set("fav", favList().filter(x=>x!==i)); favSet=new Set(ls.get("fav",[]));
+  channel.post({type:"favupd"}); refreshFavUI(); }
+function toggleFav(s){ if(favSet.has(s.i)){ rmFav(s.i); toast("Removed from My stations"); } else saveFav(s); }
+/* ======================= channel protocol ======================= */
+channel.on(m => {
+  if(m.from===CID) return;
+  window.__msgs = window.__msgs || {}; window.__msgs[m.type] = (window.__msgs[m.type]||0) + 1;   // test/diagnostic counter
+  switch(m.type){
+    case "hello": if(ownMine()) bcastState(); break;
+    case "state": if(!ownMine()){                       // mirror the owner; never touch our own audio
+        if(typeof m.vol==="number" && m.vol!==P.vol){ P.vol=m.vol; audio.volume=P.vol; setVolUI(); }
+        if(m.M) setStation(m.M);
+        P.remoteKind = m.kind || "";
+        setPlaying(!!m.playing); }
+      break;
+    case "cmd":                                          // only the audio owner executes commands
+      if(ownMine()){
+        if(m.cmd==="play"){ audioStart(m.M); addRecent(m.M); }
+        else if(m.cmd==="stop"){ audioStop(true); }
+        else if(m.cmd==="vol"){ P.vol=+m.v; audio.volume=P.vol; ls.set("vol",P.vol); setVolUI(); bcastState(); }
+      } else if(m.cmd==="stop"){ P.mine=false; setPlaying(false); }
+      break;
+    case "handoff":                                  // a window is leaving: whoever is left continues the stream
+      if(m.to && m.to!==KIND) break;                 // addressed to another kind of window
+      if(!ownMine() && m.M){ const hm=m.M, from=m.from;
+        setTimeout(()=>{ const r2=relOwner(); if(!r2 || r2.id===CID || r2.id===from) claimAndPlay(hm); }, 120); }
+      break;
+    case "handover":                                 // the mini player is adopting the stream: stand by, stay warm
+      if(ownMine() || audio.src){ handover=true; holdClaim=Date.now()+3000;
+        try{audio.pause()}catch(e){}
+        ls.set("owner",{id:CID,kind:KIND,ts:Date.now()-60000,playing:true,uuid:(P.cur&&P.cur.i)||null});
+        P.mine=false; P.remoteKind="pop"; setPlaying(true); bcastState(); }
+      break;
+    case "tookover":                                 // it is really playing there: let the stream go
+      if(handover){ handover=false; try{audio.removeAttribute("src")}catch(e){}
+        P.mine=false; P.remoteKind="pop"; setPlaying(true); bcastState(); }
+      break;
+    case "takeoverfailed":                           // it could not autoplay: the music must not be lost
+      if(!ownMine() && (m.M || P.cur)){ handover=false; holdClaim=0;
+        const want = m.M || P.cur;
+        if(audio.src){ audio.play().then(()=>{ P.mine=true; setOwner(true); setPlaying(true); bcastState(); })
+            .catch(()=>{ setPlaying(false); toast("⚠ Press ▶ to keep playing here."); }); }
+        else { setOwner(false); setTimeout(()=>claimAndPlay(want), 80); }
+        toast("💡 The mini player needs one click to take over — playing here meanwhile."); }
+      break;
+    case "takingover":                               // legacy note from an older pop-out: drop our audio
+      holdClaim = Date.now() + 2500; releaseToOther("pop"); break;
+    case "pop-hide": if(dockOpen) dockHide(); break;   // another tab asked the player to hide
+    case "favupd": favSet=new Set(favList()); refreshFavUI(); if(state.favOnly) apply(); break;
+    case "search": { const q=(m.q||"").toLowerCase(); if(!q) break; const out=[];
+      for(let i=0;i<ALL.length&&out.length<24;i++){ const s=ALL[i]; if((s.n+" "+countryOf(s)+" "+(s.t||"")+" "+(s.l||"")+" "+(s.x||"")).toLowerCase().includes(q)) out.push(M(s)); }
+      channel.post({type:"searchRes",id:m.id,res:out}); break; }
+  }
+});
+/* keep the ownership stamp alive while we hold the audio */
+setInterval(()=>{ if(ownMine()) setOwner(P.playing); }, 2000);
+/* if the owner window disappears, the next window keeps the music going
+   (main tabs get first refusal, pop-outs wait ~2.6 s so audio prefers a real tab) */
+let resumeAt = 0, holdClaim = 0;                  // holdClaim: don't fight a takeover in progress
+setInterval(()=>{ const r=ownRec();
+  if(Date.now()<holdClaim || handover) return;
+  if(!ownMine() && P.playing && !ownFresh(r)){
+    if(!resumeAt) resumeAt = Date.now() + 400;
+    if(Date.now()>=resumeAt){ resumeAt=0; claimAndPlay(P.cur); }
+  } else resumeAt = 0;
+}, 900);
+/* ============================== UI ============================== */
+function setVolUI(){ $("#vol").value=P.vol; $("#volPct").textContent=Math.round(P.vol*100)+"%"; }
+$("#vol").addEventListener("input",e=>{ P.vol=+e.target.value; audio.volume=P.vol; ls.set("vol",P.vol); $("#volPct").textContent=Math.round(P.vol*100)+"%";
+  if(ownMine()) bcastState(); else channel.post({type:"cmd",from:CID,cmd:"vol",v:P.vol}); });
+$("#bPlay").addEventListener("click",requestToggle);
+$("#bStop").addEventListener("click",requestStop);
+$("#bName").addEventListener("click",()=>{ if(P.cur) showInfo(P.cur); });
+$("#btnBarSite").addEventListener("click",()=>{ if(P.cur&&P.cur.hp) window.open(P.cur.hp,"_blank","noopener"); });
+function syncPlayBtns(){ document.querySelectorAll("button.play").forEach(b=>b.classList.toggle("on",P.playing&&P.mine&&P.cur&&b.dataset.uuid===P.cur.i)); }
+/* pop-out window / dock — one button that opens, or hides when already open (in any tab) */
+let winPop = null, dockOpen = false;
+const popAliveFresh = () => (Date.now() - (ls.get("pop-alive",0)||0)) < 5000;   // a pop-out exists somewhere
+const popOutOpen = () => !!((winPop && !winPop.closed) || dockOpen || popAliveFresh());
+function updatePopBtn(){ const b=$("#btnPop"); if(!b) return; const open=popOutOpen();
+  b.textContent = open ? "⨯ Hide pop-out" : "⧉ Pop-out";
+  b.title = open ? "Hide the pop-out player — playback continues here"
+                 : "Open the pop-out mini player (it can keep playing after you close this page)"; }
+function dockShow(){ $("#dockFrame").src = "popout.html"; $("#dock").style.display="block"; dockOpen=true; updatePopBtn(); }
+function dockHide(){ $("#dock").style.display="none"; try{ $("#dockFrame").src = "about:blank"; }catch(e){} dockOpen=false; updatePopBtn(); }
+function togglePopOut(){
+  if(winPop && !winPop.closed){ try{ winPop.close(); }catch(e){} winPop=null; updatePopBtn();
+    toast("Pop-out hidden — playback continues on this page."); return; }
+  if(dockOpen){ dockHide(); return; }
+  if(popAliveFresh()){ channel.post({type:"pop-hide"});           // it lives in another tab: ask it to close itself
+    updatePopBtn(); toast("Pop-out hidden — playback continues on this page."); return; }
+  let w = null;
+  try { w = window.open("popout.html","rbgPop","popup=1,width=330,height=250,left="+Math.max(0,(screen.availWidth-340))+",top="+Math.max(0,(screen.availHeight-300))+",resizable=yes,scrollbars=no"); }
+  catch(e){ w = null; }
+  if(w){ winPop=w;
+    /* it opens small and out of the way: the page keeps the focus, the player expands on click
+       (browsers expose no "minimise" API, so this is the closest a web page can get) */
+    const keepFocus=()=>{ try{ window.focus(); }catch(e){} };
+    setTimeout(keepFocus,120); setTimeout(keepFocus,800);
+    /* some blockers let the window open and then close it again — treat that as blocked too */
+    setTimeout(()=>{ if(winPop && winPop.closed && !dockOpen){ winPop=null; dockShow(); popupBlockedNotice(); } }, 1100);
+    toast("Mini player opened minimised — click it to expand.");
+    updatePopBtn(); }
+  else { dockShow(); popupBlockedNotice(); }
+}
+function popupBlockedNotice(){
+  notice("🚫 <b>Your browser blocked the pop-up</b>, so the mini player is docked inside this page instead (bottom-right, resize it with S / M / L). To get it as a separate window you can drag anywhere, click your browser's <b>“pop-ups blocked”</b> icon in the address bar and choose <b>always allow pop-ups for this site</b>, then press ⧉ again.", "warn"); }
+$("#btnPop").addEventListener("click",togglePopOut);
+setInterval(updatePopBtn, 1000);
+window.addEventListener("message",e=>{ if(e.data==="rbg-pop-closed"){ winPop=null; updatePopBtn(); } });
+/* dock controls */
+$("#dockClose").addEventListener("click",dockHide);
+$("#dockS").onclick=()=>{const d=$("#dock");d.classList.remove("med","large");d.classList.add("small")};
+$("#dockM").onclick=()=>{const d=$("#dock");d.classList.remove("small","large");d.classList.add("med")};
+$("#dockL").onclick=()=>{const d=$("#dock");d.classList.remove("small","med");d.classList.add("large")};
+/* ===== collapsible interface: sections, panel, header, back-to-top, shortcuts ===== */
+const SEC_ROWS = { country:"#popRow", genre:"#tagRow", lang:"#langRow" };
+const SEC_LABEL = { country:"Country", genre:"Genre", lang:"Language" };
+const secHidden = { country: ls.get("fil-country", ls.get("ctryHidden", false)),
+                    genre:   ls.get("fil-genre", false),
+                    lang:    ls.get("fil-lang", false) };
+function applySection(sec){ const row=$(SEC_ROWS[sec]); if(row) row.classList.toggle("sec-hidden", !!secHidden[sec]);
+  const b=document.querySelector('.fsec[data-sec="'+sec+'"]');
+  if(b){ b.classList.toggle("off", !!secHidden[sec]); b.setAttribute("aria-expanded", String(!secHidden[sec]));
+    b.textContent = (secHidden[sec]?"▸ ":"▾ ")+SEC_LABEL[sec]; } }
+["country","genre","lang"].forEach(applySection);
+document.querySelectorAll(".fsec").forEach(b => b.addEventListener("click", () => {
+  const s=b.dataset.sec; secHidden[s]=!secHidden[s]; ls.set("fil-"+s, secHidden[s]); applySection(s); }));
+let facHidden = ls.get("fil-panel", false);
+function applyFacets(){ $("#facets").classList.toggle("hidden", !!facHidden);
+  const b=$("#btnFacets"); b.classList.toggle("on", !facHidden); b.setAttribute("aria-expanded", String(!facHidden));
+  b.textContent = facHidden ? "🧰 Filters ▸" : "🧰 Filters ▾"; }
+applyFacets();
+$("#btnFacets").addEventListener("click", () => { facHidden=!facHidden; ls.set("fil-panel", facHidden); applyFacets(); });
+let hdrCompact = ls.get("hdr-compact", false);
+function applyHdr(){ $("#hdrHead").classList.toggle("compact", !!hdrCompact);
+  $("#btnHdr").textContent = hdrCompact ? "⌄ Header" : "⌃ Header"; }
+applyHdr();
+$("#btnHdr").addEventListener("click", () => { hdrCompact=!hdrCompact; ls.set("hdr-compact", hdrCompact); applyHdr(); });
+$("#toTop").addEventListener("click", () => window.scrollTo({ top:0, behavior:"smooth" }));
+window.addEventListener("scroll", () => $("#toTop").classList.toggle("show", window.scrollY > 600), { passive:true });
+/* active-filter chips: see and remove any filter from one place */
+function renderActiveFilters(){
+  const parts=[];
+  if(state.cc) parts.push(["c", (ccName[state.cc]||state.cc), flag(state.cc)]);
+  state.tags.forEach(t => parts.push(["t", t, "🏷"]));
+  if(state.lang) parts.push(["l", state.lang, "🗣"]);
+  if(state.codec) parts.push(["x", state.codec, "🎚"]);
+  if(state.bit) parts.push(["b", "≥"+state.bit+"k", "◍"]);
+  if(state.q) parts.push(["q", "“"+state.q+"”", "🔎"]);
+  $("#btnClearF").hidden = !parts.length;
+  $("#fActive").innerHTML = parts.map(([k,v,ic]) =>
+    '<button class="fchip" data-fk="'+k+'" data-fv="'+esc(v)+'" title="Remove this filter">'+ic+" "+esc(v)+" ✕</button>").join("");
+}
+$("#fActive").addEventListener("click", e => {
+  const b=e.target.closest(".fchip"); if(!b) return;
+  const k=b.dataset.fk, v=b.dataset.fv;
+  if(k==="c"){ state.cc=""; $("#selCountry").value=""; syncPop(); }
+  else if(k==="t"){ state.tags=state.tags.filter(t => esc(t) !== v); }
+  else if(k==="l"){ state.lang=""; }
+  else if(k==="x"){ state.codec=""; $("#selCodec").value=""; }
+  else if(k==="b"){ state.bit=0; $("#selBit").value="0"; }
+  else if(k==="q"){ state.q=""; $("#q").value=""; }
+  state.page=1; apply(); writeHash();
+});
+function clearFilters(){ Object.assign(state,{q:"",cc:"",lang:"",codec:"",bit:0,tags:[],page:1,favOnly:false});
+  $("#q").value=""; $("#selCountry").value=""; $("#selCodec").value=""; $("#selBit").value="0"; syncPop(); apply(); writeHash(); }
+$("#btnClearF").addEventListener("click", clearFilters);
+/* ⭐ My stations view + 📍 Local country shortcut */
+function refreshFavUI(){ const b=$("#btnFav"); if(!b) return;
+  b.classList.toggle("on", !!state.favOnly);
+  b.textContent = (state.favOnly?"★ ":"⭐ ")+"Saved ("+favSet.size+")";
+  b.title = state.favOnly ? "Showing only your saved stations — click to show all" : "Show only your saved stations (shortcut: s)"; }
+$("#btnFav").addEventListener("click", () => { state.favOnly=!state.favOnly; state.page=1; apply(); writeHash(); refreshFavUI(); });
+$("#btnPlayable").addEventListener("click", () => { state.playOnly=!state.playOnly; ls.set("playonly", state.playOnly); state.page=1; apply(); writeHash();
+  toast(state.playOnly ? "Showing only stations this browser can play." : "Showing every station — some can't play in this browser.", 5200); });
+const TZCC = { "Europe/London":"GB","Europe/Dublin":"IE","Europe/Paris":"FR","Europe/Berlin":"DE","Europe/Madrid":"ES",
+  "Europe/Rome":"IT","Europe/Amsterdam":"NL","Europe/Lisbon":"PT","Europe/Warsaw":"PL","Europe/Stockholm":"SE",
+  "Europe/Oslo":"NO","Europe/Helsinki":"FI","Europe/Athens":"GR","Europe/Moscow":"RU","Europe/Istanbul":"TR",
+  "America/New_York":"US","America/Chicago":"US","America/Denver":"US","America/Los_Angeles":"US","America/Phoenix":"US",
+  "America/Anchorage":"US","America/Toronto":"CA","America/Vancouver":"CA","America/Mexico_City":"MX","America/Sao_Paulo":"BR",
+  "America/Buenos_Aires":"AR","America/Bogota":"CO","America/Lima":"PE","America/Santiago":"CL","Asia/Tokyo":"JP",
+  "Asia/Seoul":"KR","Asia/Shanghai":"CN","Asia/Hong_Kong":"HK","Asia/Taipei":"TW","Asia/Singapore":"SG","Asia/Kolkata":"IN",
+  "Asia/Karachi":"PK","Asia/Dubai":"AE","Asia/Jerusalem":"IL","Asia/Bangkok":"TH","Asia/Jakarta":"ID","Asia/Manila":"PH",
+  "Africa/Johannesburg":"ZA","Africa/Lagos":"NG","Africa/Cairo":"EG","Africa/Nairobi":"KE","Pacific/Auckland":"NZ" };
+function detectLocalCC(){
+  try{ const m=(navigator.language||"").match(/-([A-Za-z]{2})$/); if(m){ const cc=m[1].toUpperCase(); if(ccName[cc]) return cc; } }catch(e){}
+  try{ const tz=(Intl.DateTimeFormat().resolvedOptions().timeZone)||"";
+    if(tz.indexOf("Australia/")===0) return "AU";
+    if(TZCC[tz]) return TZCC[tz]; }catch(e){}
+  return ""; }
+const LOCAL_CC = detectLocalCC();
+function applyLocalUI(){ const b=$("#btnLocal"); if(!LOCAL_CC){ b.hidden=true; return; }
+  const nm=ccName[LOCAL_CC]||LOCAL_CC;
+  b.hidden=false; b.classList.toggle("on", state.cc===LOCAL_CC);
+  b.textContent = "📍 "+(nm.length<=14?nm:LOCAL_CC);
+  b.title = "Only stations from "+nm+(state.cc===LOCAL_CC?" — click to clear":" — click to filter"); }
+$("#btnLocal").addEventListener("click", () => { if(!LOCAL_CC) return;
+  state.cc = (state.cc===LOCAL_CC) ? "" : LOCAL_CC; $("#selCountry").value = state.cc; syncPop(); state.page=1;
+  apply(); writeHash(); applyLocalUI(); });
+
+/* ===== decorative visualiser: 5 styles, cycled by the 🎛 button ===== */
+const VIZSTYLES=["bars","waves","mirror","dots","blocks"];
+const vizCanvas=$("#viz"), vctx=vizCanvas.getContext("2d");
+let vizOn=false, vizStyle=0, vizLevels=new Array(56).fill(0), vizLast=0;
+const VIZREDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+function vizSize(){ const r=vizCanvas.getBoundingClientRect(); const dpr=Math.min(2,window.devicePixelRatio||1);
+  vizCanvas.width=Math.max(120,Math.round((r.width||300)*dpr)); vizCanvas.height=Math.max(24,Math.round((r.height||44)*dpr)); }
+function vizSet(on,st){ vizOn=on; vizStyle=st||0; ls.set("viz",vizOn?vizStyle+1:0);
+  vizCanvas.style.display=vizOn?"block":"none"; $("#btnViz").classList.toggle("pink",vizOn);
+  $("#btnViz").title="Visualiser: "+(vizOn?VIZSTYLES[vizStyle]:"off")+" — click to cycle 5 styles";
+  if(vizOn) vizSize(); }
+$("#btnViz").addEventListener("click",()=>{ if(!vizOn) vizSet(true,0); else if(vizStyle<VIZSTYLES.length-1) vizSet(true,vizStyle+1); else vizSet(false,0); });
+window.addEventListener("resize",()=>{ if(vizOn) vizSize(); });
+function vizDraw(){ const W=vizCanvas.width,H=vizCanvas.height; vctx.clearRect(0,0,W,H);
+  const n=vizLevels.length, bw=W/n;
+  const grad=vctx.createLinearGradient(0,H,0,0);
+  grad.addColorStop(0,"#ff3ea5");grad.addColorStop(.35,"#ff9f1c");grad.addColorStop(.6,"#ffe14d");grad.addColorStop(.82,"#c9ff3d");grad.addColorStop(1,"#1fe3ff");
+  vctx.fillStyle=grad; vctx.strokeStyle=grad;
+  if(vizStyle===0){ for(let i=0;i<n;i++){ const h=vizLevels[i]*H*0.92+2; vctx.fillRect(i*bw+bw*0.16,H-h,bw*0.68,h); } }
+  else if(vizStyle===1){ vctx.lineWidth=Math.max(1.5,W*0.004); vctx.shadowColor="#1fe3ff"; vctx.shadowBlur=9;
+    vctx.beginPath(); for(let i=0;i<n;i++){ const x=i*bw+bw/2, y=H/2-(vizLevels[i]-0.32)*H*0.62; i?vctx.lineTo(x,y):vctx.moveTo(x,y); } vctx.stroke();
+    vctx.globalAlpha=.45; vctx.beginPath(); for(let i=0;i<n;i++){ const x=i*bw+bw/2, y=H/2+(vizLevels[i]-0.32)*H*0.55; i?vctx.lineTo(x,y):vctx.moveTo(x,y); } vctx.stroke();
+    vctx.globalAlpha=1; vctx.shadowBlur=0; }
+  else if(vizStyle===2){ for(let i=0;i<n;i++){ const h=vizLevels[i]*H*0.45+1.5; vctx.fillRect(i*bw+bw*0.16,H/2-h,bw*0.68,h); vctx.fillRect(i*bw+bw*0.16,H/2,bw*0.68,h); } }
+  else if(vizStyle===3){ const cols=n/2|0; for(let i=0;i<cols;i++){ const lv=Math.round(vizLevels[i*2]*6);
+      for(let j=0;j<lv;j++){ vctx.beginPath(); vctx.arc(i*(W/cols)+(W/cols)/2, H-6-j*((H-14)/6), Math.min((W/cols)*0.3,4), 0, 6.283); vctx.fill(); } } }
+  else { const cols=n/2|0; for(let i=0;i<cols;i++){ const lv=Math.ceil(vizLevels[i*2]*6);
+      for(let j=0;j<6;j++){ vctx.globalAlpha=j<lv?1:.15; vctx.fillRect(i*(W/cols)+2, H-4-(j+1)*((H-10)/6), Math.max(2,(W/cols)-4), Math.max(1,(H-10)/6-2)); } } vctx.globalAlpha=1; }
+  vctx.shadowBlur=0; }
+function vizLoop(t){ requestAnimationFrame(vizLoop);
+  if(!vizOn||document.hidden) { vizLast=t; return; }
+  const dt=Math.min(0.05,((t-vizLast)/1000)||0.016); vizLast=t;
+  const active = (P.playing ? (P.mine ? 1 : 0.55) : 0.18) * (VIZREDUCED ? 0.45 : 1);
+  const now=t/1000, n=vizLevels.length;
+  for(let i=0;i<n;i++){ const base=0.5+0.5*Math.sin(now*1.7+i*0.35)+0.35*Math.sin(now*3.1+i*0.11)+0.25*Math.sin(now*5.3-i*0.7);
+    const tgt=Math.max(0,Math.min(1,(base*0.5+(Math.sin(now*9+i)*0.5+0.5)*0.28)*active+(VIZREDUCED?0:(Math.random()-0.5)*0.1*active)));
+    vizLevels[i]+=(tgt-vizLevels[i])*Math.min(1,dt*(4+7*active)); }
+  vizDraw(); }
+vizSize(); requestAnimationFrame(vizLoop);
+const vizRestore=ls.get("viz",0); if(vizRestore>0) vizSet(true,Math.min(vizRestore-1,VIZSTYLES.length-1));
+
+/* ============================== explorer ============================== */
+const state = { q:"", cc:"", lang:"", codec:"", bit:0, sort:"k", tags:[], page:1, favOnly:false, playOnly: ls.get("playonly", true) };
+const PSZ=240; let visibleTags=24;
+function matchAll(s,excl){
+  if(state.favOnly && !favSet.has(s.i)) return false;
+  if(state.playOnly && !playable(s)) return false;      // default: only stations this browser can really play
+  if(state.cc&&s.cc!==state.cc)return false;
+  if(state.lang&&normLang(s.l)!==state.lang)return false;
+  if(state.codec&&s.x!==state.codec)return false;
+  if(state.bit&&(s.b||0)<state.bit)return false;
+  if(!excl.tags&&state.tags.length){const t=new Set(tokens(s.t));for(const tg of state.tags)if(!t.has(tg))return false}
+  if(!excl.q&&state.q){const hay=(s.n+" "+countryOf(s)+" "+(s.s||"")+" "+(s.l||"")+" "+(s.t||"")+" "+(s.x||"")).toLowerCase();if(!hay.includes(state.q))return false}
+  return true }
+const tagPoolRows=()=>ALL.filter(s=>matchAll(s,{tags:true}));
+function tagCounts(rows){const c=new Map();for(const s of rows)for(const t of tokens(s.t))c.set(t,(c.get(t)||0)+1);return[...c.entries()].sort((a,b)=>b[1]-a[1])}
+function langCounts(rows){const c=new Map();for(const s of rows){const l=normLang(s.l);if(l)c.set(l,(c.get(l)||0)+1)}return[...c.entries()].sort((a,b)=>b[1]-a[1])}
+function buildStatic(){
+  $("#spinN").textContent=fmt(ALL.length);
+  $("#selCountry").insertAdjacentHTML("beforeend",'<option value="">🌍 All countries</option>');
+  META.countries.forEach(c=>$("#selCountry").insertAdjacentHTML("beforeend",`<option value="${esc(c.cc)}">${flag(c.cc)} ${esc(c.c)} (${fmt(c.n)})</option>`));
+  META.codecs.slice(0,12).forEach(x=>$("#selCodec").insertAdjacentHTML("beforeend",`<option value="${esc(x.x)}">${esc(x.x)} (${fmt(x.n)})</option>`));
+  $("#popRow").insertAdjacentHTML("beforeend",'<span class="lbl">Country</span>');
+  META.countries.slice(0,10).forEach(c=>$("#popRow").insertAdjacentHTML("beforeend",`<button class="ftag" data-cc="${esc(c.cc)}">${flag(c.cc)} ${esc(c.c)}</button>`));
+  $("#popRow").insertAdjacentHTML("beforeend",'<button class="ftag on" data-cc="">🌍 All</button>');
+  $("#popRow").addEventListener("click",e=>{const b=e.target.closest(".ftag");if(!b)return;state.cc=b.dataset.cc;state.page=1;$("#selCountry").value=state.cc;syncPop();apply()});
+  $("#hdr").innerHTML=[["stations",fmt(ALL.length)],["countries",fmt(META.country_count)],["all indexed",fmt(META.stats.stations)],["clicks / 24h",fmt(META.stats.clicks_last_day)],["snapshot",META.generated_local]]
+    .map(([k,v])=>`<span class="chip"><b>${esc(k)}</b>&nbsp; ${esc(v)}</span>`).join("");
+  const L=ls.get("last",null); if(L&&L.m){ setStation(L.m); setPlaying(false); P.owner="main"; }
+  $("#bar").style.display="flex"; setVolUI();
+}
+function syncPop(){ document.querySelectorAll("#popRow .ftag").forEach(b=>b.classList.toggle("on",b.dataset.cc===state.cc)) }
+function renderTagRow(){ const counts=tagCounts(tagPoolRows()); const shown=counts.slice(0,visibleTags),rest=counts.length-shown.length;
+  let h='<span class="lbl">Genre</span>'+shown.map(([t,n],i)=>`<button class="ftag${state.tags.includes(t)?" on":""}" data-tag="${esc(t)}">${esc(t)}<span class="n">${fmt(n)}</span></button>`).join("");
+  if(rest>0)h+=`<button class="more">+${rest} more</button>`; if(visibleTags>24)h+='<button class="less">show fewer</button>';
+  if(!counts.length)h+='<span style="color:var(--mut);font-size:12px">no genres in this scope</span>';
+  $("#tagRow").innerHTML=h; }
+function renderLangRow(){ const counts=langCounts(tagPoolRows());
+  if(!counts.length){ $("#langRow").classList.add("sec-empty"); return }
+  $("#langRow").classList.remove("sec-empty");
+  let h='<span class="lbl">Language</span><select id="dynLang" style="max-width:220px"><option value="">Any language</option>';
+  counts.slice(0,120).forEach(([l,n])=>{h+=`<option value="${esc(l)}"${state.lang===l?" selected":""}>${esc(l)} (${fmt(n)})</option>`});
+  h+="</select>"; $("#langRow").innerHTML=h;
+  $("#dynLang").onchange=e=>{state.lang=e.target.value;state.page=1;apply()} }
+const TAGCLS=["t0","t1","t2","t3","t4"];
+function cardHTML(s,oi){
+  const pk=playKind(s);
+  const tags=tokens(s.t).slice(0,5); const extra=tokens(s.t).length-tags.length;
+  const bit=s.x?(s.x+(s.b?" "+s.b+"kbps":"")):"";
+  const loc=[countryOf(s),s.s].filter(Boolean).join(" · ");
+  return `<div class="card">
+   <div class="row1">${logoURL(s)?`<img class="fav" src="${esc(logoURL(s))}" alt="" loading="lazy">`:""}
+     <div class="h1"><span class="nm" data-act="info" data-i="${oi}">${esc(s.n)}</span>
+     <div class="loc">${flag(s.cc)} ${esc(loc)}${s.l?" · "+esc(s.l):""}</div></div>
+     <span class="icongrp"><button class="iconbtn star${favSet.has(s.i)?" on":""}" data-act="fav" data-i="${oi}" title="Save to ⭐ My stations">${favSet.has(s.i)?"★":"☆"}</button><button class="iconbtn" data-act="info" data-i="${oi}" title="Details">ⓘ</button></span></div>
+   <div class="tags">${tags.map((t,i)=>`<span class="tag ${TAGCLS[i%5]}">${esc(t)}</span>`).join("")}${extra>0?`<span class="tag">+${extra}</span>`:""}</div>
+   <div class="meta">${bit?`<span><b>${esc(bit)}</b>${s.hl?" · HLS":""}</span>`:""}<span>🔥 <b>${fmt(s.k)}</b></span><span>👍 <b>${fmt(s.v)}</b></span>${pk!==1?`<span class="kbadge" title="${esc(KIND_TEXT[pk].why)}">${KIND_TEXT[pk].tag}</span>`:""}</div>
+   <div class="acts">
+     <button class="btn play" data-act="play" data-i="${oi}" data-uuid="${esc(s.i)}">▶</button>
+     <a class="btn" href="${esc(s.u)}" target="_blank" rel="noopener">Stream</a>
+     ${s.hp?`<a class="btn" href="${esc(s.hp)}" target="_blank" rel="noopener">Website</a>`:""}
+     <button class="btn" data-act="copy" data-i="${oi}">Copy</button></div></div>` }
+function showInfo(m){ const s=m, pk=playKind(s); const allTags=tokens(s.t);
+  const rows=[["Country",`${flag(s.cc)} ${countryOf(s)}`],["State",s.s],["Language",s.l],
+    ["Format",(s.x||"?")+(s.b?" · "+s.b+" kbps":"")+(s.hl?" · HLS":"")],["Votes",fmt(s.v)],["Clicks",fmt(s.k)],
+    ["Playback", pk===1 ? "✅ plays in this browser" : "⚠ "+KIND_TEXT[pk].tag+" — "+KIND_TEXT[pk].why],
+    ["Stream",`<code>${esc(s.u)}</code>`]].filter(r=>r[1]);
+  $("#mHead").innerHTML=`${logoURL(s)?`<img class="fav" style="width:52px;height:52px" src="${esc(logoURL(s))}" alt="">`:""}
+   <div class="h1"><span class="nm">${esc(s.n)}</span><div class="loc">${flag(s.cc)} ${esc(countryOf(s))}</div></div>`;
+  $("#mBody").innerHTML=(allTags.length?`<div class="tags" style="margin-bottom:10px">${allTags.map((t,i)=>`<span class="tag ${TAGCLS[i%5]}">${esc(t)}</span>`).join("")}</div>`:"")+
+    `<table>${rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("")}</table>`;
+  $("#mActs").innerHTML=`<button class="btn pink" id="mPlay">▶ Play</button>
+    <button class="btn" id="mFav">${favSet.has(s.i)?"★ Saved":"☆ Save"}</button>
+    <a class="btn" href="${esc(s.u)}" target="_blank" rel="noopener">Open stream</a>
+    ${s.hp?`<a class="btn" href="${esc(s.hp)}" target="_blank" rel="noopener">🌐 Station website</a>`:`<button class="btn" disabled>No website listed</button>`}
+    <button class="btn" id="mCopy">Copy stream URL</button>
+    <button class="btn" id="mClose">Close</button>`;
+  $("#modal").style.display="flex";
+  $("#mPlay").onclick=()=>{$("#modal").style.display="none";doPlay(s)};
+  $("#mFav").onclick=()=>{ toggleFav(s); $("#mFav").textContent = favSet.has(s.i) ? "★ Saved" : "☆ Save"; };
+  $("#mCopy").onclick=()=>copyText(s.u,"Stream URL");
+  $("#mClose").onclick=()=>$("#modal").style.display="none"; }
+function doPlay(s){ const k = playKind(s);
+  if(k !== 1){ unplayableNotice(s, k); return; }        // never start a stream this browser must fail on
+  requestPlay(M(s)); }
+$("#modal").addEventListener("click",e=>{if(e.target===$("#modal"))$("#modal").style.display="none"});
+document.addEventListener("keydown",e=>{ const t=e.target, typing = t && (t.tagName==="INPUT"||t.tagName==="SELECT"||t.tagName==="TEXTAREA");
+  if(e.key==="Escape"){ $("#modal").style.display="none"; return; }
+  if(typing || e.metaKey || e.ctrlKey || e.altKey) return;
+  if(e.key==="/"){ e.preventDefault(); $("#q").focus(); }
+  else if(e.key==="f"||e.key==="F"){ facHidden=!facHidden; ls.set("fil-panel",facHidden); applyFacets(); }
+  else if(e.key==="v"||e.key==="V"){ $("#btnViz").click(); }
+  else if(e.key==="h"||e.key==="H"){ hdrCompact=!hdrCompact; ls.set("hdr-compact",hdrCompact); applyHdr(); }
+  else if(e.key==="s"||e.key==="S"){ state.favOnly=!state.favOnly; state.page=1; apply(); writeHash(); refreshFavUI(); } });
+function pagerHTML(total){ const pages=Math.max(1,Math.ceil(total/PSZ)); if(state.page>pages)state.page=pages;
+  const cur=state.page; const nums=[...new Set([1,pages,cur-1,cur,cur+1])].filter(p=>p>=1&&p<=pages).sort((a,b)=>a-b);
+  let out=`<button data-p="${cur-1}" ${cur<=1?"disabled":""}>◀</button>`; let last=0;
+  nums.forEach(p=>{if(p-last>1)out+="<span style='opacity:.5'>…</span>";out+=`<button class="${p===cur?"cur":""}" data-p="${p}">${p}</button>`;last=p});
+  out+=`<button data-p="${cur+1}" ${cur>=pages?"disabled":""}>▶</button><input id="pgJump" type="number" min="1" max="${pages}" placeholder="${cur}">`;
+  return out }
+function bindPager(){ document.querySelectorAll(".pager").forEach(el=>{
+  el.onclick=e=>{const b=e.target.closest("button[data-p]");if(!b||b.disabled)return;state.page=+b.dataset.p;apply();window.scrollTo({top:0})};
+  const j=el.querySelector("input"); if(j)j.onchange=e=>{const p=parseInt(e.target.value,10);if(p>0){state.page=p;apply();window.scrollTo({top:0})}} }) }
+function apply(){ const t0=performance.now();
+  const cmpx={k:(a,b)=>b.k-a.k,v:(a,b)=>b.v-a.v,n:(a,b)=>a.n.localeCompare(b.n),b:(a,b)=>(b.b||0)-(a.b||0)||b.k-a.k}[state.sort]||((a,b)=>b.k-a.k);
+  const rows=[]; ALL.forEach((s,oi)=>{if(matchAll(s,{}))rows.push([s,oi])});
+  rows.sort((a,b)=>cmpx(a[0],b[0])); const total=rows.length;
+  const pages=Math.max(1,Math.ceil(total/PSZ)); if(state.page>pages)state.page=pages;
+  const slice=rows.slice((state.page-1)*PSZ,state.page*PSZ);
+  const crumb=[state.cc?(ccName[state.cc]||state.cc)+" ("+fmt(total)+")":null,state.lang?state.lang:null,state.codec?state.codec:null].filter(Boolean).join(" · ");
+  $("#cntLine").innerHTML=`<span style="margin:0">${crumb?`<b>${esc(crumb)}</b> · `:""}<b>${fmt(total)}</b> stations · page <b>${state.page}</b>/${fmt(pages)} · ${fmt((state.page-1)*PSZ+1)}–${fmt(Math.min(state.page*PSZ,total))}${state.tags.length?" · genre: "+state.tags.map(esc).join(", "):""}${state.playOnly&&unplayableCount()?` · <span title="hidden because this browser can't play them">${fmt(unplayableCount())} hidden</span>`:""}</span>`;
+  const bp=$("#btnPlayable"); if(bp){ bp.classList.toggle("on", !!state.playOnly);
+    bp.title = state.playOnly ? `Only stations this browser can play are listed (${fmt(unplayableCount())} hidden — click to show all)` : "Showing every station, including ones this browser can't play — click to filter"; }
+  const ph=pagerHTML(total); $("#pagerTop").innerHTML=ph; $("#pagerBottom").innerHTML=ph; bindPager();
+  $("#list").innerHTML=slice.map(([s,oi])=>cardHTML(s,oi)).join("");
+  renderTagRow(); renderLangRow(); renderActiveFilters(); applyLocalUI(); refreshFavUI(); window.__perf=performance.now()-t0; document.body.dataset.ready="1"; }
+function readHash(){ const h=new URLSearchParams(location.hash.slice(1));
+  state.q=h.get("q")||"";state.cc=h.get("c")||"";state.lang=h.get("l")||"";state.codec=h.get("x")||"";state.bit=+h.get("b")||0;state.sort=h.get("s")||"k";
+  state.tags=(h.get("t")||"").split(",").filter(Boolean);state.page=+h.get("p")||1;state.favOnly=h.get("f")==="1";
+  if(h.has("pl")) state.playOnly = h.get("pl")!=="0";     // deep links can force the full list
+  $("#q").value=state.q;$("#selCountry").value=state.cc;$("#selCodec").value=state.codec;$("#selBit").value=String(state.bit);$("#selSort").value=state.sort;syncPop() }
+let ht; function writeHash(){ clearTimeout(ht); ht=setTimeout(()=>{ const h=new URLSearchParams();
+  if(state.q)h.set("q",state.q);if(state.cc)h.set("c",state.cc);if(state.lang)h.set("l",state.lang);if(state.codec)h.set("x",state.codec);
+  if(state.bit)h.set("b",state.bit);if(state.sort!=="k")h.set("s",state.sort);if(state.tags.length)h.set("t",state.tags.join(","));if(state.page>1)h.set("p",state.page);if(state.favOnly)h.set("f","1");
+  if(!state.playOnly)h.set("pl","0");
+  history.replaceState(null,"","#"+h.toString()) },300) }
+const queueApply=()=>{state.page=1;apply();writeHash()};
+let deb;
+$("#q").addEventListener("input",()=>{state.q=$("#q").value.trim().toLowerCase();clearTimeout(deb);deb=setTimeout(queueApply,180)});
+$("#selCountry").onchange=e=>{state.cc=e.target.value;state.page=1;syncPop();apply();writeHash()};
+$("#selCodec").onchange=e=>{state.codec=e.target.value;queueApply()};
+$("#selBit").onchange=e=>{state.bit=+e.target.value;queueApply()};
+$("#selSort").onchange=e=>{state.sort=e.target.value;apply();writeHash()};
+$("#btnReset").onclick=()=>{Object.assign(state,{q:"",cc:"",lang:"",codec:"",bit:0,sort:"k",tags:[],page:1});
+  $("#q").value="";$("#selCountry").value="";$("#selCodec").value="";$("#selBit").value="0";$("#selSort").value="k";syncPop();apply();writeHash()};
+$("#tagRow").addEventListener("click",e=>{const b=e.target.closest(".ftag");if(!b)return;
+  if(b.classList.contains("more")){visibleTags+=40;renderTagRow();return}
+  if(b.classList.contains("less")){visibleTags=24;renderTagRow();return}
+  const t=b.dataset.tag;const i=state.tags.indexOf(t);if(i>=0)state.tags.splice(i,1);else state.tags.push(t);state.page=1;apply();writeHash()});
+$("#list").addEventListener("click",e=>{const b=e.target.closest("[data-act][data-i]");if(!b)return;const s=ALL[+b.dataset.i];const act=b.dataset.act;
+  if(act==="play")doPlay(s);
+  else if(act==="fav"){ toggleFav(s); b.classList.toggle("on",favSet.has(s.i)); b.textContent=favSet.has(s.i)?"★":"☆"; }
+  else if(act==="copy")copyText(s.u,"Stream URL");
+  else if(act==="info")showInfo(s)});
+buildStatic(); $("#spin").style.display="none"; readHash(); apply();
+channel.post({type:"hello"});
+/* debug hooks for automated tests */
+window.__dbg={ ALL:()=>ALL.length, state:()=>({...state}), player:()=>({cur:P.cur?P.cur.n:null,playing:P.playing,vol:P.vol,mine:P.mine}),
+  caps:()=>({...CAP}), playKind:(i)=>playKind(ALL[i]), unplayable:()=>unplayableCount(), playableCount:()=>ALL.length-unplayableCount(),
+  notice:()=>({shown:document.querySelector("#notice").classList.contains("show"), text:document.querySelector("#notice").textContent.slice(0,140)}),
+  audioState:()=>({paused:audio.paused,src:!!audio.src,err:lastPlayErr,handover:handover}),
+  playFirst:()=>doPlay(ALL[0]), stop:()=>requestStop(), openPop:togglePopOut, popOpen:()=>popOutOpen(), popBtn:()=>$("#btnPop").textContent.trim(),
+  stream:()=>({mine:P.mine, playing:P.playing, hasSrc:!!audio.src, cur:P.cur&&P.cur.n,
+    owner:(relOwner()||{}).kind||null, vol:P.vol}),
+  viz:()=>({on:vizOn,style:VIZSTYLES[vizStyle],idx:vizStyle}),
+  fav:()=>({count:favSet.size,only:state.favOnly,btn:$("#btnFav").textContent.trim()}), toggleFavFirst:()=>toggleFav(ALL[0]),
+  local:()=>({cc:LOCAL_CC,label:$("#btnLocal").textContent.trim(),hidden:$("#btnLocal").hidden}),
+  ui:()=>({sections:{...secHidden},facetsHidden:!!facHidden,headerCompact:!!hdrCompact,
+    activeChips:document.querySelectorAll("#fActive .fchip").length,toTop:document.querySelector("#toTop").classList.contains("show")}),
+  clearFilters };
+</script>
+</body>
+</html>

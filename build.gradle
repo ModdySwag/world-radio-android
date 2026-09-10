@@ -1,0 +1,6 @@
+// Root build file. The app deliberately has NO third-party dependencies: it uses the
+// platform WebView, platform MediaSession and platform Notification APIs only, so the
+// build cannot break on a dependency resolution and the APK stays small.
+plugins {
+    id 'com.android.application' version '8.5.2' apply false
+}

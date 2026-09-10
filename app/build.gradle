@@ -1,0 +1,33 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.moddys.worldradio'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.moddys.worldradio"
+        minSdk 26            // 2017+; also lets us use Notification.Builder(context, channel)
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    buildTypes {
+        debug {
+            // side-loadable; signed with the CI debug key
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+        release {
+            minifyEnabled false
+            // v1 ships debug builds; a signing config is added when you want a Play upload
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
