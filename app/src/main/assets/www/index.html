@@ -825,7 +825,8 @@ channel.on(m => {
         if(audio.src){ audio.play().then(()=>{ P.mine=true; setOwner(true); setPlaying(true); bcastState(); })
             .catch(()=>{ setPlaying(false); toast("⚠ Press ▶ to keep playing here."); }); }
         else { setOwner(false); setTimeout(()=>claimAndPlay(want), 80); }
-        toast("💡 The mini player needs one click to take over — playing here meanwhile."); }
+        /* No notice here on purpose: the stream is still playing and that is the whole promise.
+           The mini player takes it over on the first touch - quietly. */ }
       break;
     case "takingover":                               // legacy note from an older pop-out: drop our audio
       holdClaim = Date.now() + 2500; releaseToOther("pop"); break;
