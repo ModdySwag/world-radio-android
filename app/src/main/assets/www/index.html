@@ -63,9 +63,7 @@ select:focus{border-color:var(--purp)}
 .ftag.on{background:var(--pink);border:2px solid var(--pink);color:#fff;box-shadow:2px 2px 0 rgba(0,0,0,.4);border-radius:14px 6px 14px 6px}
 .ftag .n{opacity:.75;margin-left:5px;font-size:11px}
 #popRow.collapsed,.frow.sec-hidden,.frow.sec-empty,#facets.hidden{display:none}
-header.compact h1{font-size:22px;transform:none;text-shadow:2px 2px 0 var(--pink)}
-header.compact h1 .brand{font-size:1.06em;text-shadow:2px 2px 0 var(--lime)}
-header.compact .chips,header.compact .spraytag{display:none}
+/* (the small "compact" header was removed: the header is always the full-size one) */
 header .chips{flex:1 1 100%}
 .fhead{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 .fsec{font-weight:800;letter-spacing:.3px}
@@ -205,34 +203,37 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
 
 <div class="wrap">
 <header id="hdrHead">
-<!-- ============================================================================
-     MODDYS World Radio - "Get the app" (the header block)
-
-     A self-contained block for the top right of moddys.net: inside <header>, right
-     after the .spraytag, which is what sits at the right edge today:
-
-         <span class="spraytag">48k stations &middot; zero ads</span>
-         [ PASTE THE BLOCK BELOW HERE ]
-
-     Two optional lines for index.html's <head>, worth adding at the same time -
-     they are what make Add to Home Screen look like an app:
-
-         <link rel="apple-touch-icon" href="apple-touch-icon.png">
-         <meta name="apple-mobile-web-app-title" content="World Radio">
-
-     WHAT IT NEEDS ALONGSIDE IT (both are already in the deploy folder):
-         app-install.js     the shared version check + the two download links
-         downloads.html     the downloads area with the full install guide for both
-                            platforms - this block just points at it
-
-     The numbers it checks against live in app-install.js, and they are the same numbers
-     the apps themselves carry in compat.json. Change them in one place, not three.
-
-     Inside the app this hides itself: the shell marks the page (html.wr-app) and the rule
-     at the bottom of the <style> does the rest - a download button inside the app it is
-     already installed from is nonsense.
-     ============================================================================ -->
+  <h1><span class="brand">MODDY</span>S <span class="o">WORLD RADIO</span><br>SPRAY <span class="g">IT LOUD</span></h1>
+  <span class="spraytag">48k stations &middot; zero ads</span>
 <div id="wrDownload" class="wr-dl" hidden>
+  <span class="wr-dl-hint" aria-hidden="true">
+    <svg viewBox="0 0 44 56" width="40" height="50" focusable="false" role="presentation">
+      <defs>
+        <linearGradient id="wrDlHand" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#1fe3ff"/>
+          <stop offset="0.55" stop-color="#a06bff"/>
+          <stop offset="1" stop-color="#ff3ea5"/>
+        </linearGradient>
+      </defs>
+      <!-- fist, folded fingers and thumb, outlined so the hand reads at 40px: a silhouette
+           alone turns into a blob at this size -->
+      <g fill="url(#wrDlHand)" stroke="#0c0d14" stroke-width="2.4" stroke-linejoin="round">
+        <rect x="14" y="20" width="12" height="34" rx="6"/>
+        <rect x="21" y="6" width="21" height="26" rx="8.5"/>
+        <rect x="7" y="20" width="14" height="12" rx="6"/>
+      </g>
+      <!-- the folds, so it is a hand and not three tubes -->
+      <g stroke="#0c0d14" stroke-width="1.8" stroke-linecap="round" opacity=".35" fill="none">
+        <path d="M28.5 12v12"/>
+        <path d="M35 13v11"/>
+      </g>
+      <!-- the tap, under the fingertip -->
+      <g fill="none" stroke="#ffe14d" stroke-width="2.6" stroke-linecap="round" opacity=".95">
+        <path d="M13.5 52q8 3.5 16 0"/>
+      </g>
+    </svg>
+  </span>
+
   <button id="wrDlBtn" class="wr-dl-btn" type="button" aria-expanded="false"
           aria-controls="wrDlPanel">📱 Get the app</button>
 
@@ -266,9 +267,16 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
 
 <style>
   /* Scoped to this block. Colours come from the site's own variables, so it follows the
-     theme (and the app's light mode) automatically. */
-  .wr-dl{position:relative;font:inherit;margin-left:auto}
+     theme (and the app's light mode) automatically. The block is a column so the finger has
+     its own space directly above the button instead of being laid over the header. */
+  .wr-dl{position:relative;margin-left:auto;font:inherit;display:flex;flex-direction:column;
+    align-items:flex-end;gap:3px}
   .spraytag + .wr-dl{margin-left:0}
+  .wr-dl-hint{pointer-events:none;line-height:0;
+    filter:drop-shadow(0 4px 10px rgba(31,227,255,.35));
+    animation:wrDlNudge 2.6s ease-in-out infinite}
+  @keyframes wrDlNudge{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+  @media (prefers-reduced-motion:reduce){.wr-dl-hint{animation:none}}
   .wr-dl-btn{font:800 12px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     letter-spacing:.5px;text-transform:uppercase;color:#0c0d14;cursor:pointer;
     background:linear-gradient(90deg,var(--cyan),var(--purp));border:0;border-radius:3px;
@@ -299,7 +307,7 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
     border-left:2px solid var(--line);padding-left:8px}
   .wr-dl-foot b{color:var(--tx)}
   .wr-dl-foot a{color:var(--cyan);white-space:nowrap}
-  /* Inside the app: no download button. */
+  /* Inside the app: no download button (and no finger pointing at it). */
   html.wr-app #wrDownload{display:none !important}
 </style>
 
@@ -349,10 +357,7 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
 })();
 </script>
 
-  <h1><span class="brand">MODDY</span>S <span class="o">WORLD RADIO</span><br>SPRAY <span class="g">IT LOUD</span></h1>
-  <span class="spraytag">48k stations · zero ads</span>
-  <button class="btn" id="btnHdr" title="Collapse / expand the header (shortcut: h)">⌃ Header</button>
-  <div class="chips" id="hdr"></div>
+<div class="chips" id="hdr"></div>
 </header>
 
 <div class="toolbar">
@@ -769,17 +774,20 @@ function applySection(sec){ const row=$(SEC_ROWS[sec]); if(row) row.classList.to
 ["country","genre","lang"].forEach(applySection);
 document.querySelectorAll(".fsec").forEach(b => b.addEventListener("click", () => {
   const s=b.dataset.sec; secHidden[s]=!secHidden[s]; ls.set("fil-"+s, secHidden[s]); applySection(s); }));
-let facHidden = ls.get("fil-panel", false);
+/* Starts CLOSED on every load: the filter panel is a tool you open when you want it, not
+   furniture standing above the station list. Opening it still toggles and is remembered under
+   the same key, but a fresh load always begins tidy. */
+let facHidden = true;
 function applyFacets(){ $("#facets").classList.toggle("hidden", !!facHidden);
   const b=$("#btnFacets"); b.classList.toggle("on", !facHidden); b.setAttribute("aria-expanded", String(!facHidden));
   b.textContent = facHidden ? "🧰 Filters ▸" : "🧰 Filters ▾"; }
 applyFacets();
 $("#btnFacets").addEventListener("click", () => { facHidden=!facHidden; ls.set("fil-panel", facHidden); applyFacets(); });
-let hdrCompact = ls.get("hdr-compact", false);
-function applyHdr(){ $("#hdrHead").classList.toggle("compact", !!hdrCompact);
-  $("#btnHdr").textContent = hdrCompact ? "⌄ Header" : "⌃ Header"; }
-applyHdr();
-$("#btnHdr").addEventListener("click", () => { hdrCompact=!hdrCompact; ls.set("hdr-compact", hdrCompact); applyHdr(); });
+/* The header no longer collapses. It is always shown at its full size, and the compact state
+   is unreachable from anywhere - no button, no shortcut - so any value an older version left
+   in storage is cleared here rather than trusted. */
+ls.set("hdr-compact", false);
+$("#hdrHead").classList.remove("compact");
 $("#toTop").addEventListener("click", () => window.scrollTo({ top:0, behavior:"smooth" }));
 window.addEventListener("scroll", () => $("#toTop").classList.toggle("show", window.scrollY > 600), { passive:true });
 /* active-filter chips: see and remove any filter from one place */
@@ -974,7 +982,6 @@ document.addEventListener("keydown",e=>{ const t=e.target, typing = t && (t.tagN
   if(e.key==="/"){ e.preventDefault(); $("#q").focus(); }
   else if(e.key==="f"||e.key==="F"){ facHidden=!facHidden; ls.set("fil-panel",facHidden); applyFacets(); }
   else if(e.key==="v"||e.key==="V"){ $("#btnViz").click(); }
-  else if(e.key==="h"||e.key==="H"){ hdrCompact=!hdrCompact; ls.set("hdr-compact",hdrCompact); applyHdr(); }
   else if(e.key==="s"||e.key==="S"){ state.favOnly=!state.favOnly; state.page=1; apply(); writeHash(); refreshFavUI(); } });
 function pagerHTML(total){ const pages=Math.max(1,Math.ceil(total/PSZ)); if(state.page>pages)state.page=pages;
   const cur=state.page; const nums=[...new Set([1,pages,cur-1,cur,cur+1])].filter(p=>p>=1&&p<=pages).sort((a,b)=>a-b);
@@ -1039,7 +1046,7 @@ window.__dbg={ ALL:()=>ALL.length, state:()=>({...state}), player:()=>({cur:P.cu
   viz:()=>({on:vizOn,style:VIZSTYLES[vizStyle],idx:vizStyle}),
   fav:()=>({count:favSet.size,only:state.favOnly,btn:$("#btnFav").textContent.trim()}), toggleFavFirst:()=>toggleFav(ALL[0]),
   local:()=>({cc:LOCAL_CC,label:$("#btnLocal").textContent.trim(),hidden:$("#btnLocal").hidden}),
-  ui:()=>({sections:{...secHidden},facetsHidden:!!facHidden,headerCompact:!!hdrCompact,
+  ui:()=>({sections:{...secHidden},facetsHidden:!!facHidden,headerCompact:false,
     activeChips:document.querySelectorAll("#fActive .fchip").length,toTop:document.querySelector("#toTop").classList.contains("show")}),
   clearFilters };
 </script>
