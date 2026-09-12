@@ -59,6 +59,14 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
 }
 /* The narrowest phones: 320px leaves 288px of content, and the two badges together are about
    300px at the sizes above, so they step down once more rather than one of them folding. */
+/* Phone: let the controls shrink and pack instead of wrapping one per line. The selects give up
+   width first (their text ellipsises); the two buttons never shrink. */
+@media(max-width:900px){
+  .toolbar{gap:6px}
+  .toolbar select{font-size:12.5px;padding:8px 6px;min-width:0;flex:0 1 auto;max-width:118px}
+  #selCountry{flex:1 1 96px}
+  .toolbar .btn{padding:8px 10px;font-size:12.5px;white-space:nowrap}
+}
 @media(max-width:365px){
   header .spraytag{font-size:8.5px;letter-spacing:.2px;padding:4px 7px}
   .wr-dl-btn{font-size:10px;padding:6px 8px}
@@ -66,10 +74,15 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
 }
 .toolbar{position:sticky;top:6px;z-index:50;padding:8px 0 10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
   background:linear-gradient(180deg,rgba(16,17,23,.92) 0%,rgba(16,17,23,.92) 78%,transparent)}
-#q{flex:1 1 300px;background:#0d0e16;border:2px solid var(--line);color:var(--tx);border-radius:12px;padding:10px 14px;font-size:15px;outline:none;transition:border-color .12s,box-shadow .12s}
+/* min-width:0 overrides the intrinsic minimum an input gets from its placeholder text, which was
+   wide enough to claim a whole line of the toolbar on a desktop and push everything else down. */
+#q{flex:1 1 300px;min-width:220px;background:#0d0e16;border:2px solid var(--line);color:var(--tx);border-radius:12px;padding:10px 14px;font-size:15px;outline:none;transition:border-color .12s,box-shadow .12s}
 #q:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(31,227,255,.18)}
 select{background:#0d0e16;border:2px solid var(--line);color:var(--tx);border-radius:10px;padding:8px 9px;font-size:13.5px;outline:none;max-width:220px}
 select:focus{border-color:var(--purp)}
+/* Reset and Filters are one pair: wrapped together they can never be split across two lines,
+   which is what used to cost a line of the toolbar on a phone. */
+.tbacts{display:flex;gap:6px;align-items:center}
 .btn{appearance:none;border:2px solid var(--line);background:#10111c;color:var(--tx);border-radius:10px;padding:8px 13px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
   transition:transform .08s,box-shadow .08s,background .12s,border-color .12s}
 .btn:hover{border-color:var(--cyan);box-shadow:3px 3px 0 rgba(31,227,255,.35);transform:translate(-1px,-1px)}
@@ -136,10 +149,11 @@ select:focus{border-color:var(--purp)}
 .play.on{background:var(--pink);border-color:#fff;color:#fff;animation:blink 1.1s steps(2) infinite}
 @keyframes blink{50%{background:var(--lime);border-color:var(--lime);color:#151605}}
 .pager{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
-.pager button{background:#10111c;border:2px solid var(--line);color:var(--tx);border-radius:8px;min-width:30px;padding:4px 8px;cursor:pointer;font-size:12.5px;font-weight:700}
-.pager button.cur{background:var(--cyan);border-color:var(--cyan);color:#04161a}
+.pager button{background:#10111c;border:2px solid var(--line);color:var(--tx);border-radius:10px;min-width:44px;min-height:44px;padding:4px 10px;cursor:pointer;font-size:14px;font-weight:700}
 .pager button:disabled{opacity:.3;cursor:default}
-.pager input{width:54px;background:#0d0e16;border:2px solid var(--line);color:var(--tx);border-radius:8px;padding:4px 6px;text-align:center;font-size:12.5px}
+.pager .pgstep{font-size:16px}                       /* the arrows: 44px, reachable with a thumb */
+.pager .pgno{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--cyan)}
+.pager .pgap{opacity:.5;padding:0 2px}
 .empty{color:var(--mut);text-align:center;padding:44px 0;font-size:15px}
 a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
 
@@ -449,17 +463,19 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
 <div class="toolbar">
   <input id="q" type="search" placeholder="Search stations by name, genre, country, language…  ( / focuses )" autocomplete="off">
   <select id="selCountry" title="Country"></select>
-  <select id="selCodec" title="Format"><option value="">Any format</option></select>
+  <select id="selCodec" title="Format"><option value="">Format</option></select>
   <select id="selBit" title="Minimum bitrate">
-    <option value="0" selected>Any bitrate</option><option value="64">≥ 64 kbps</option>
+    <option value="0" selected>Bitrate</option><option value="64">≥ 64 kbps</option>
     <option value="128">≥ 128 kbps</option><option value="192">≥ 192 kbps</option>
   </select>
   <select id="selSort" title="Sort">
     <option value="k">Most clicked</option><option value="v">Most voted</option>
     <option value="n">Name A–Z</option><option value="b">Bitrate</option>
   </select>
-  <button class="btn" id="btnFacets" aria-expanded="true" title="Show / hide the filter panel (shortcut: f)">🧰 Filters ▾</button>
-  <button class="btn" id="btnReset">Reset</button>
+  <div class="tbacts">
+    <button class="btn" id="btnReset">Reset</button>
+    <button class="btn" id="btnFacets" aria-expanded="false" title="Show / hide the filter panel (shortcut: f)">🧰 Filters ▾</button>
+  </div>
 </div>
 
 <div class="facets" id="facets">
@@ -1146,13 +1162,18 @@ document.addEventListener("keydown",e=>{ const t=e.target, typing = t && (t.tagN
   else if(e.key==="s"||e.key==="S"){ state.favOnly=!state.favOnly; state.page=1; apply(); writeHash(); refreshFavUI(); } });
 function pagerHTML(total){ const pages=Math.max(1,Math.ceil(total/PSZ)); if(state.page>pages)state.page=pages;
   const cur=state.page; const nums=[...new Set([1,pages,cur-1,cur,cur+1])].filter(p=>p>=1&&p<=pages).sort((a,b)=>a-b);
-  let out=`<button data-p="${cur-1}" ${cur<=1?"disabled":""}>◀</button>`; let last=0;
-  nums.forEach(p=>{if(p-last>1)out+="<span style='opacity:.5'>…</span>";out+=`<button class="${p===cur?"cur":""}" data-p="${p}">${p}</button>`;last=p});
-  out+=`<button data-p="${cur+1}" ${cur>=pages?"disabled":""}>▶</button><input id="pgJump" type="number" min="1" max="${pages}" placeholder="${cur}">`;
+  /* The arrows are the control, so they get a real touch target (44px is the floor for a finger on
+     glass, and at the old 31x28 a tap that misses by a few px does nothing at all - which reads as
+     "the arrows don't work"). The page you are on is shown as plain text between them, so the
+     number box that used to sit beside the pair is gone. */
+  let out=`<button class="pgstep" data-p="${cur-1}" ${cur<=1?"disabled":""} title="Previous page" aria-label="Previous page">◀</button>`; let last=0;
+  nums.forEach(p=>{if(p-last>1)out+="<span class='pgap'>…</span>";
+    out+=p===cur?`<span class="pgno" aria-current="page" title="Page ${p} of ${pages}">${p}</span>`
+                :`<button data-p="${p}" title="Page ${p} of ${pages}">${p}</button>`;last=p});
+  out+=`<button class="pgstep" data-p="${cur+1}" ${cur>=pages?"disabled":""} title="Next page" aria-label="Next page">▶</button>`;
   return out }
 function bindPager(){ document.querySelectorAll(".pager").forEach(el=>{
-  el.onclick=e=>{const b=e.target.closest("button[data-p]");if(!b||b.disabled)return;state.page=+b.dataset.p;apply();window.scrollTo({top:0})};
-  const j=el.querySelector("input"); if(j)j.onchange=e=>{const p=parseInt(e.target.value,10);if(p>0){state.page=p;apply();window.scrollTo({top:0})}} }) }
+  el.onclick=e=>{const b=e.target.closest("button[data-p]");if(!b||b.disabled)return;state.page=+b.dataset.p;apply();writeHash();window.scrollTo({top:0})} }) }
 function apply(){ const t0=performance.now();
   const cmpx={k:(a,b)=>b.k-a.k,v:(a,b)=>b.v-a.v,n:(a,b)=>a.n.localeCompare(b.n),b:(a,b)=>(b.b||0)-(a.b||0)||b.k-a.k}[state.sort]||((a,b)=>b.k-a.k);
   const rows=[]; ALL.forEach((s,oi)=>{if(matchAll(s,{}))rows.push([s,oi])});
@@ -1195,6 +1216,10 @@ function endSearchTyping(){ const q=$("#q"); if(!q) return;
     q.setAttribute("readonly","readonly"); q.blur();
     setTimeout(()=>q.removeAttribute("readonly"),120);
   }
+  /* Inside the app the keyboard is the WebView's, and a blur alone does not always take it
+     away there, so say out loud that a search was committed and let the shell finish the job.
+     Nothing listens in a plain browser. */
+  try{ document.dispatchEvent(new CustomEvent("wr-search-commit")); }catch(e){}
 }
 $("#q").addEventListener("keydown",e=>{ if(e.key==="Enter"||e.keyCode===13){ e.preventDefault(); endSearchTyping(); } });
 $("#q").addEventListener("search",endSearchTyping);

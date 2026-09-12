@@ -1,52 +1,61 @@
-# MODDYS World Radio v1.6.2
+# MODDYS World Radio v1.6.3
 
-**The player bar now fits your phone.** Reported from an Android device: the Pop-out button was
-squashed against the right edge with half of it missing. `world-radio-v1.6.2.apk` installs
-straight over 1.6.1 - favourites kept, nothing else changed.
+This one is about keeping up to date, and about the keyboard. The bundled web app also catches
+up with the site — five revisions of player, search and pager work that shipped to the website
+but not to the app until now.
 
-## What was wrong
+`world-radio-v1.6.3.apk` installs over v1.6.2 (same signing key), so your saved stations,
+favourites and volume survive the upgrade.
 
-Three separate faults in one row, all measured across 14 device shapes rather than guessed at:
+## What's new
 
-- **Nothing in the bar could give way.** The volume slider's own minimum width (about 129px) was
-  wider than the box it sat in, so it spilled out and painted across the Pop-out button. And
-  because the buttons were shrinkable, a tight row squeezed Pop-out down to 53px, which made its
-  label wrap onto three lines - a 68px tall button in a 62px row, with the text cut off.
-- **A phone rule was hiding an element that does not exist** (it named `#barStop`; the button is
-  `#bStop`), so Stop stayed on screen taking room the row did not have.
-- **The page reserved no space for the bar at all**, and the station grid's 320px minimum column
-  was wider than a 320px phone's 288px of content - which pushed the whole document past the
-  edge of the screen and made Android scale the page down.
+**The app can now update itself.** On launch it reads a small file from the site
+(`updates.json`) and compares it with its own version code. If a newer build exists you get a
+notice at the top of the player:
 
-## What changed
+> **Version 1.6.3 is available** — you are on 1.6.2. Update now installs it over this one; your
+> saved stations and favourites stay.  [ **Update now** ]  [ Later ]
 
-- The bar's controls can no longer be squeezed, and the volume slider now shrinks properly.
-- On phones the bar drops Stop, Website, the volume percentage, the badge, the station meta line
-  and the visualiser toggle - that last one because below 900px its canvas is already switched
-  off, so on a phone it was a button that could not do anything visible.
-- The Pop-out button keeps its icon and its accessible name; only the word goes on the narrowest
-  screens, which gives the station name room to breathe.
-- The bar's height is measured, so the page makes exactly that much room at the bottom and the
-  back-to-top button and any toast sit above the bar instead of behind it.
-- Buttons are at least 40px on any touch device, and the bar respects the safe areas on the
-  sides too, not just the bottom (that is landscape notches).
+One tap downloads the new APK and hands it to Android's installer. The download is checked
+against the checksum published in the feed before it is offered, so a half-finished download
+cannot reach the installer pretending to be an app. The only thing Android insists on is its
+own "install this app?" confirmation — that is deliberate and cannot be skipped by any app.
+
+You will need "install unknown apps" allowed for World Radio, which you already granted when
+you installed it this way. If the permission is missing, the app says so and opens the right
+settings page instead of failing silently.
+
+**The keyboard now goes away when you commit a search.** Pressing the magnifier or return in
+the search box used to leave the keyboard sitting over the list. The page asks the shell to take
+it down, and the shell really does it — a blur alone is not enough inside a WebView, where the
+keyboard belongs to the system.
+
+**The app now carries the website's latest work**, which it was missing:
+
+- the pager's arrows are 44px touch targets, and the page number sits between them as plain
+  text (the number box beside them is gone)
+- Reset and Filters sit together with Filters on the right, so the toolbar is three rows on a
+  phone instead of five
+- the player bar steps aside while you search on a phone or tablet, and comes back when you play
+- the same visualiser on the main page and in the player sheet, from one shared file
 
 ## Verified
 
-- **The bar, on 14 device profiles** - Android 320/360/412, an Android tablet, a landscape
-  phone, iPhone SE/15/Pro Max, iPad mini and Pro, macOS at two sizes and Windows at two sizes:
-  nothing clipped, nothing overlapping, the row fits the window, and the page is never wider
-  than the device. It was 6 broken profiles before this.
-- **46 shell checks** still pass on both bridges, and the page inside the app is byte-identical
-  to the one moddys.net serves.
+- `tools/apk_identity.py` reads the published APK: versionName `1.6.3`, versionCode 11, no
+  `.debug` suffix, v2+v3 signatures, and the same signing certificate as v1.6.2
+- `tools/shim_harness.py` drives the real shell over both bridges — 70 checks, including the
+  keyboard hand-off and the update notice: both routes to committing a search tell the shell to
+  put the keyboard away, a newer build raises the notice, and its button hands the native side
+  the URL, version and checksum
+- the bundled `index.html` is byte-identical to the one `moddys.net` serves
 
 ## Install
 
-Download `world-radio-v1.6.2.apk` below and open it on the phone or tablet.
+1. Download `world-radio-v1.6.3.apk` to the phone or tablet.
+2. Tap it. Android asks once to allow installs from this source — allow it, then tap Install.
+3. From this version on, updates arrive as a notice in the app itself.
 
-**Privacy & safety:** the app talks to one thing only, the radio directory and the streams you
-play. No analytics, no accounts, no tracking, nothing collected, nothing sent anywhere.
-Cleartext `http://` streams are allowed because 8,330 of the 47,994 stations are still plain
-HTTP; certificate checks are never bypassed.
+Needs Android 8.0 or newer (API 26). Tuned for Android 11+ — the System WebView version is what
+decides which streams can play, and the app's Check panel reports yours.
 
-Cheers Moddy !
+## Cheers Moddy !

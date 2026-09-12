@@ -1,6 +1,7 @@
 package com.moddys.worldradio;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -113,6 +114,8 @@ public class MainActivity extends Activity {
                    tuned for. */
                 Compat compat = Compat.get(MainActivity.this);
                 if (compat != null) compat.maybeWarn(MainActivity.this);
+                /* And look for a newer build. The shell draws the answer; this only asks. */
+                checkForUpdate(false);
             }
 
             /** Safety net: this app is a single page, so any attempt to navigate it
@@ -289,6 +292,51 @@ public class MainActivity extends Activity {
             });
         }
 
+        /**
+         * A search was committed in the page. A blur is usually enough on the web, but this is a
+         * WebView: the keyboard belongs to the system, and on many devices it stays up unless the
+         * IME is told to go. So take it down for real.
+         */
+        @JavascriptInterface
+        public void dismissKeyboard() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        android.view.inputmethod.InputMethodManager imm =
+                                (android.view.inputmethod.InputMethodManager)
+                                        getSystemService(Context.INPUT_METHOD_SERVICE);
+                        if (imm != null && web != null) {
+                            imm.hideSoftInputFromWindow(web.getWindowToken(), 0);
+                        }
+                        if (web != null) web.clearFocus();
+                    } catch (Exception e) {
+                        Log.w(TAG, "dismissKeyboard: " + e);
+                    }
+                }
+            });
+        }
+
+        /** Update now, from the shell's own notice. Downloads the APK and installs it. */
+        @JavascriptInterface
+        public void updateApp(final String url, final String version, final String sha256) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Updates.downloadAndInstall(MainActivity.this, url, version, sha256);
+                }
+            });
+        }
+
+        /** Check again on demand - the shell's Check panel asks when it is opened. */
+        @JavascriptInterface
+        public void checkUpdate() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() { checkForUpdate(true); }
+            });
+        }
+
         /** What the shell needs to describe this device in its own check panel - and what a
          *  user can paste into a bug report when a tablet misbehaves. */
         @JavascriptInterface
@@ -317,6 +365,30 @@ public class MainActivity extends Activity {
             }
             return o.toString();
         }
+    }
+
+    /**
+     * Ask the site whether a newer build exists and hand the answer to the shell, which owns
+     * every pixel of the UI. Silent on failure: an update check must never interrupt listening.
+     */
+    private void checkForUpdate(boolean manual) {
+        Updates.check(this, manual, new Updates.Callback() {
+            @Override
+            public void onResult(Updates.Info info, String error) {
+                if (error != null) {
+                    Log.i(TAG, "update check failed: " + error);
+                    if (info == null) return;
+                }
+                String js;
+                if (info != null && info.available) {
+                    js = "window.__wrUpdate && window.__wrUpdate.available(" + info.json() + ")";
+                } else {
+                    js = "window.__wrUpdate && window.__wrUpdate.none("
+                            + JSONObject.quote(info == null ? "" : info.version) + ")";
+                }
+                if (web != null) web.evaluateJavascript(js, null);
+            }
+        });
     }
 
     private String versionName() {

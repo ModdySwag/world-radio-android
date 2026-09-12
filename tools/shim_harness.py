@@ -78,6 +78,9 @@ window.WorldRadioJs = {
   log: function (m) { window.__wrTest.calls.push(['log', String(m)]); },
   state: function (p, s, e) { window.__wrTest.calls.push(['state', !!p, String(s), String(e || '')]); },
   url: function (u) { window.__wrTest.calls.push(['url', String(u)]); },
+  dismissKeyboard: function () { window.__wrTest.calls.push(['dismissKeyboard']); },
+  updateApp: function (u, v, s) { window.__wrTest.calls.push(['updateApp', String(u), String(v), String(s)]); },
+  checkUpdate: function () { window.__wrTest.calls.push(['checkUpdate']); },
   device: function () { return %(device)s; }
 };
 """
@@ -88,6 +91,9 @@ window.webkit = { messageHandlers: { wr: { postMessage: function (msg) {
   if (msg && msg.m === 'log') window.__wrTest.calls.push(['log', String(msg.a[0])]);
   if (msg && msg.m === 'state') window.__wrTest.calls.push(['state', !!msg.a[0], String(msg.a[1]), String(msg.a[2] || '')]);
   if (msg && msg.m === 'url') window.__wrTest.calls.push(['url', String(msg.a[0])]);
+  if (msg && msg.m === 'dismissKeyboard') window.__wrTest.calls.push(['dismissKeyboard']);
+  if (msg && msg.m === 'updateApp') window.__wrTest.calls.push(['updateApp', String(msg.a[0]), String(msg.a[1]), String(msg.a[2])]);
+  if (msg && msg.m === 'checkUpdate') window.__wrTest.calls.push(['checkUpdate']);
 } } } };
 window.__wrDevice = %(device)s;
 """
@@ -246,6 +252,72 @@ def run_platform(page, name, global_name, setup, device, headed):
     logs = [c for c in calls if c[0] == "log"]
     check("%s: the shim reports itself to the native side" % name,
           any("shim ready" in c[1] for c in logs), logs[:3])
+
+    # Committing a search must take the keyboard down. Headless Chromium has no soft keyboard,
+    # so the proxy is the bridge call the shell makes: if the shell is told, the IME goes.
+    page.evaluate("window.__wrTest.calls.length = 0")
+    page.evaluate("""(() => {
+      const q = document.querySelector('#q');
+      q.value = 'jazz';
+      q.focus();
+      q.dispatchEvent(new KeyboardEvent('keydown', {key: 'Enter', bubbles: true}));
+    })()""")
+    page.wait_for_timeout(300)
+    calls = page.evaluate("window.__wrTest.calls")
+    check("%s: committing a search tells the shell to put the keyboard away" % name,
+          any(c[0] == "dismissKeyboard" for c in calls), calls)
+    focus = page.evaluate("() => document.activeElement && document.activeElement.id")
+    check("%s: and the field has given up focus" % name, focus != "q", focus)
+
+    # The magnifier route: a `search` event, which is what a soft keyboard sends.
+    page.evaluate("window.__wrTest.calls.length = 0")
+    page.evaluate("""(() => {
+      const q = document.querySelector('#q');
+      q.focus();
+      q.dispatchEvent(new Event('search', {bubbles: true}));
+    })()""")
+    page.wait_for_timeout(300)
+    check("%s: the keyboard's magnifier does the same" % name,
+          any(c[0] == "dismissKeyboard" for c in page.evaluate("window.__wrTest.calls")))
+
+    # A newer build: the shell must show a notice with a working Update button, and the button
+    # must hand the native side everything it needs to fetch and install.
+    info = {"version": "9.9.9", "url": "https://moddys.net/downloads/world-radio-v9.9.9.apk",
+            "sha256": "abc123", "notes": "fixes", "code": 99, "platform": name}
+    page.evaluate("(i) => window.__wrUpdate.available(i)", info)
+    page.wait_for_timeout(400)
+    banner = page.evaluate("""() => {
+      const el = document.querySelector('#wrUpd');
+      if (!el) return {shown: false};
+      const go = el.querySelector('[data-wr-upd=\"go\"]');
+      const r = go ? go.getBoundingClientRect() : null;
+      return {shown: getComputedStyle(el).display !== 'none', text: el.textContent,
+              goLabel: go ? go.textContent : null, goH: r ? Math.round(r.height) : 0,
+              mentions: el.textContent.indexOf('9.9.9') >= 0,
+              mentionsMine: el.textContent.indexOf('1.6.') >= 0 || el.textContent.indexOf('1.0.') >= 0};
+    }""")
+    check("%s: a newer build raises a notice" % name, banner["shown"] and banner["mentions"], banner)
+    check("%s: the notice names the version you are on" % name, banner["mentionsMine"], banner)
+    check("%s: its button is a real touch target" % name, banner["goH"] >= 40, banner)
+    page.evaluate("window.__wrTest.calls.length = 0")
+    page.click("#wrUpd [data-wr-upd=\"go\"]")
+    page.wait_for_timeout(300)
+    upd = [c for c in page.evaluate("window.__wrTest.calls") if c[0] == "updateApp"]
+    check("%s: Update now hands the native side the URL, version and checksum" % name,
+          len(upd) == 1 and upd[0][1] == info["url"] and upd[0][2] == "9.9.9" and upd[0][3] == "abc123",
+          upd)
+
+    # Later dismisses it; being up to date shows nothing at all.
+    page.evaluate("window.__wrTest.calls.length = 0")
+    page.click("#wrUpd [data-wr-upd=\"later\"]")
+    page.wait_for_timeout(200)
+    check("%s: Later dismisses the notice" % name,
+          page.evaluate("() => getComputedStyle(document.querySelector('#wrUpd')).display === 'none'"))
+    page.evaluate("() => window.__wrUpdate.none('9.9.9')")
+    page.wait_for_timeout(200)
+    check("%s: nothing is shown when this build is current" % name,
+          page.evaluate("() => { const u = document.querySelector('#wrUpd');"
+                        " return !u || getComputedStyle(u).display === 'none'; }"))
 
 
 def main():

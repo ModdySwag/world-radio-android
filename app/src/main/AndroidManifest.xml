@@ -9,6 +9,17 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <!-- Android 13+: required before the playback notification can be shown -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Updating a sideloaded app: the check downloads the new APK and hands it to the system
+         installer. The user still confirms the install; this only allows the hand-off. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <!-- So the installer can be found to hand the APK to on Android 11+. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="application/vnd.android.package-archive" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="true"

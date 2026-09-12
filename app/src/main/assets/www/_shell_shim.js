@@ -617,7 +617,7 @@
       "html.wr-light .ftag{background:#fff !important;color:var(--tx) !important;",
       "  border-color:rgba(20,23,40,.22) !important}",
       "html.wr-light .ftag.on{background:var(--pink) !important;color:#fff !important;border-color:var(--pink) !important}",
-      "html.wr-light #q,html.wr-light #pgJump,html.wr-light #dynLang,html.wr-light select{",
+      "html.wr-light #q,html.wr-light #dynLang,html.wr-light select{",
       "  background:#fff !important;color:var(--tx) !important}",
       "html.wr-light img.fav{background:#e9edf6 !important}",
       "html.wr-light #dock .dwin{background:#fff !important;color:var(--tx) !important}",
@@ -946,6 +946,15 @@
         !PLAYFAIL.probed ? "not tested yet \u2014 Run again to find out (it plays nothing)"
         : (PLAYFAIL.gestureNeeded ? "this device needs play to be pressed" : "allowed"));
 
+    /* Whether this app is up to date. The native side owns the answer; this reports it. */
+    row(UPD.state === "available" ? "warn" : (UPD.state === "current" ? "ok" : "info"), "Update",
+        UPD.state === "available"
+          ? (updText(UPD.latest.version) + " is available \u2014 " + (isIOS()
+              ? "open the download page from the notice at the top"
+              : "one tap on the notice at the top installs it"))
+          : UPD.state === "current" ? "you are on the latest version"
+          : "not checked yet \u2014 this runs on launch; open Check to look again");
+
     var st = false;
     try {
       localStorage.setItem("rbg-wr-probe", "1");
@@ -1116,8 +1125,128 @@
       native("state", [false, "", ""]);
     });
 
+    wireSearchKeyboard();
+
     report("shim ready | station=" + (info().cur || "none"));
   }
+
+  /* ------------------------------------------------------ search keyboard ---- */
+  /* Committing a search should put the keyboard away. The page blurs its own field when it is
+     committed (its endSearchTyping), but on Android a blur alone often leaves the IME on screen
+     and WKWebView can need an explicit endEditing, so the shell hides it for real. Three routes
+     because the soft-keyboard keys differ: return/Go, the `search` event the field fires when
+     the magnifier is used, and the page's own signal for the routes only it can see. */
+  function wireSearchKeyboard() {
+    var q = $("#q");
+    if (!q) return;
+    function commit() {
+      try { q.blur(); } catch (e) { }
+      native("dismissKeyboard", []);
+    }
+    q.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === "Go" || e.keyCode === 13) commit();
+    });
+    q.addEventListener("search", commit);
+    doc.addEventListener("wr-search-commit", commit);
+  }
+
+  /* ----------------------------------------------------------- update check -- */
+  /* The native side owns the check - it is the one that knows its own version code and it is
+     the only side that can install anything. This draws the answer and offers the action.
+     Android installs the new APK in one tap; nothing can install an update for a sideloaded
+     iOS app, so there the button opens the download page and the wording says as much. */
+  var UPD = { state: "unknown", latest: null };
+  var updEl = null;
+
+  function updStyle() {
+    if (doc.getElementById("wrUpdCss")) return;
+    var css = doc.createElement("style");
+    css.id = "wrUpdCss";
+    css.textContent =
+      "#wrUpd{position:fixed;left:0;right:0;top:0;z-index:80;display:flex;gap:8px;align-items:center;" +
+      "padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;background:#101426;" +
+      "border-bottom:2px solid #1ad7ff;color:#eaf6ff;box-shadow:0 6px 18px rgba(0,0,0,.45);" +
+      "font:13px/1.35 system-ui,-apple-system,'Segoe UI',sans-serif}" +
+      "#wrUpd .wr-upd-t{flex:1 1 auto;min-width:0}" +
+      "#wrUpd b{color:#1ad7ff}" +
+      "#wrUpd .wr-upd-n{display:block;opacity:.8;font-size:12px}" +
+      "#wrUpd button{flex:0 0 auto;min-height:40px;border:2px solid #1ad7ff;background:#1ad7ff;" +
+      "color:#04161a;font-weight:700;border-radius:9px;padding:8px 12px;font:inherit;cursor:pointer}" +
+      "#wrUpd button.wr-alt{background:transparent;color:#eaf6ff;border-color:#3a4460}" +
+      "#wrUpd button:disabled{opacity:.6}";
+    (doc.head || doc.documentElement).appendChild(css);
+  }
+
+  function updShow() {
+    updStyle();
+    var ios = isIOS();
+    if (!updEl) {
+      updEl = doc.createElement("div");
+      updEl.id = "wrUpd";
+      updEl.innerHTML = '<div class="wr-upd-t"></div>' +
+        '<button data-wr-upd="go"></button>' +
+        '<button class="wr-alt" data-wr-upd="later">Later</button>';
+      updEl.addEventListener("click", function (e) {
+        var b = e.target.closest("[data-wr-upd]");
+        if (!b) return;
+        if (b.dataset.wrUpd === "later") { updEl.style.display = "none"; return; }
+        b.disabled = true;
+        native("updateApp", [UPD.latest.url, UPD.latest.version, UPD.latest.sha256]);
+        var gone = ios;
+        b.textContent = ios ? "Opening\u2026" : "Downloading\u2026";
+        var note = updEl.querySelector(".wr-upd-n");
+        if (note) note.textContent = ios
+          ? "The download page is opening \u2014 install the new file the same way you did the first time."
+          : "Your browser will ask to install it when the download finishes.";
+        if (gone) setTimeout(function () { updEl.style.display = "none"; }, 1200);
+      });
+      (doc.body || doc.documentElement).appendChild(updEl);
+    }
+    var info = UPD.latest;
+    updEl.querySelector(".wr-upd-t").innerHTML =
+      "<b>Version " + esc(updText(info.version)) + " is available</b>" +
+      "<span class=\"wr-upd-n\">" + esc(ios
+        ? "You are on " + upMine() + ". iOS will not install an update for a sideloaded app \u2014 this opens the download page."
+        : "You are on " + upMine() + ". Update now installs it over this one; your saved stations and favourites stay.") +
+      "</span>";
+    var go = updEl.querySelector('[data-wr-upd="go"]');
+    go.textContent = ios ? "Get the update" : "Update now";
+    go.disabled = false;
+    updEl.style.display = "";
+  }
+
+  function upMine() {
+    var d = deviceFacts();
+    return d.app ? String(d.app) : "an older build";
+  }
+  function updText(s) { return String(s == null ? "" : s); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function isIOS() { return (deviceFacts().platform || "") === "ios"; }
+
+  /* Called by the native side: available(info) | none(latestVersion) | failed(why) */
+  window.__wrUpdate = {
+    available: function (info) {
+      UPD.latest = info || {};
+      UPD.state = "available";
+      try { updShow(); } catch (e) { }
+      return UPD.state;
+    },
+    none: function (latest) {
+      UPD.state = "current";
+      UPD.latest = latest ? { version: latest } : null;
+      return UPD.state;
+    },
+    failed: function (why) {
+      UPD.state = "failed";
+      UPD.why = String(why || "");
+      return UPD.state;
+    },
+    state: function () { return { state: UPD.state, latest: UPD.latest }; }
+  };
 
   boot();
 
@@ -1132,6 +1261,7 @@
     check: renderCheck,
     checkToggle: toggleCheck,
     checkReport: checkReport,
+    update: window.__wrUpdate,
     /* Opened from the launch compatibility notice: expand the player AND show the check
        panel, so "what can this device actually play?" is one tap from the warning. */
     compat: function () {
