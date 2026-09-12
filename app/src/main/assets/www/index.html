@@ -55,7 +55,6 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
   header h1{grid-column:1 / -1}
   header .spraytag{grid-column:1;justify-self:start;margin-left:0;white-space:nowrap}
   header .wr-dl{grid-column:2;justify-self:end;margin-left:0}
-  header .chips{grid-column:1 / -1}
   .wr-dl-btn{white-space:nowrap}
 }
 /* The narrowest phones: 320px leaves 288px of content, and the two badges together are about
@@ -65,9 +64,6 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
   .wr-dl-btn{font-size:10px;padding:6px 8px}
   header{column-gap:8px}
 }
-.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.chip{background:rgba(30,32,58,.8);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--mut)}
-.chip b{color:var(--tx);font-weight:700}
 .toolbar{position:sticky;top:6px;z-index:50;padding:8px 0 10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
   background:linear-gradient(180deg,rgba(16,17,23,.92) 0%,rgba(16,17,23,.92) 78%,transparent)}
 #q{flex:1 1 300px;background:#0d0e16;border:2px solid var(--line);color:var(--tx);border-radius:12px;padding:10px 14px;font-size:15px;outline:none;transition:border-color .12s,box-shadow .12s}
@@ -88,7 +84,6 @@ select:focus{border-color:var(--purp)}
 .ftag .n{opacity:.75;margin-left:5px;font-size:11px}
 #popRow.collapsed,.frow.sec-hidden,.frow.sec-empty,#facets.hidden{display:none}
 /* (the small "compact" header was removed: the header is always the full-size one) */
-header .chips{flex:1 1 100%}
 .fhead{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 .fsec{font-weight:800;letter-spacing:.3px}
 .fsec.off{border-style:dashed;opacity:.7}
@@ -162,8 +157,14 @@ a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
 
 /* bottom mini player bar */
 #bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;align-items:center;gap:10px;
+  transition:transform .22s ease,opacity .22s ease;
   padding:10px calc(14px + env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px));
   background:rgba(13,14,22,.97);border-top:3px solid;border-image:linear-gradient(90deg,var(--pink),var(--orange),var(--yel),var(--lime),var(--cyan),var(--purp)) 1}
+/* While you are searching, the bar gets out of the way: a search is about the results, and on a
+   phone the bar covers the bottom of the list. It comes back - and stays - the moment you press
+   play, and steps aside again on the next keystroke in the search box. */
+#bar.wr-away{transform:translateY(115%);opacity:0;pointer-events:none}
+@media (prefers-reduced-motion: reduce){#bar{transition:none}}
 #bar .art{width:46px;height:46px;border-radius:10px 4px 10px 4px;object-fit:cover;border:1px solid var(--line);flex:0 0 auto}
 /* The name block. On a desktop it takes what its text needs and the controls follow it; below
    900px it has a zero flex-basis instead, because with a content-sized basis the row's
@@ -436,7 +437,6 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
 })();
 </script>
 
-<div class="chips" id="hdr"></div>
 </header>
 
 <div class="toolbar">
@@ -451,8 +451,8 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
     <option value="k">Most clicked</option><option value="v">Most voted</option>
     <option value="n">Name A–Z</option><option value="b">Bitrate</option>
   </select>
-  <button class="btn" id="btnReset">Reset</button>
   <button class="btn" id="btnFacets" aria-expanded="true" title="Show / hide the filter panel (shortcut: f)">🧰 Filters ▾</button>
+  <button class="btn" id="btnReset">Reset</button>
 </div>
 
 <div class="facets" id="facets">
@@ -704,7 +704,21 @@ function claimAndPlay(m){ if(ownMine()){ audioStart(m); addRecent(m); return; }
   setTimeout(()=>{ const r=relOwner();                        // …then confirm we won it
     if(r && r.id!==CID){ setStation(m); addRecent(m); P.remoteKind=r.kind||""; setPlaying(true); return; }
     audioStart(m); addRecent(m); }, 300 + Math.floor(Math.random()*180)); }
+/* ---------- the bar steps aside while you search, and stays when you press play ----------
+   One rule: while the search box has something in it the bar is away, so the results have the
+   room; pressing play pins it back (that is when you want the transport), and it stays pinned
+   until the next keystroke in the box. Emptying the box is no longer a search, so it returns. */
+let barPinned=false;
+function barAway(){ const q=$("#q"); return !barPinned && !!q && q.value.trim()!==""; }
+function syncBarAway(){
+  const away=barAway(), bar=$("#bar");
+  if(!bar) return;
+  bar.classList.toggle("wr-away",away);
+  /* re-measure either way, so the page takes back the room the bar was holding */
+  if(away) document.documentElement.style.setProperty("--barh","0px"); else syncBarSpace();
+}
 function requestPlay(m){ const r=relOwner();
+  barPinned=true; syncBarAway();
   if(r && r.id!==CID){ channel.post({type:"cmd",from:CID,cmd:"play",M:m});
     setStation(m); addRecent(m); P.remoteKind=r.kind||""; P.mine=false; setPlaying(true); return; }
   claimAndPlay(m); }
@@ -1037,8 +1051,6 @@ function buildStatic(){
   META.countries.slice(0,10).forEach(c=>$("#popRow").insertAdjacentHTML("beforeend",`<button class="ftag" data-cc="${esc(c.cc)}">${flag(c.cc)} ${esc(c.c)}</button>`));
   $("#popRow").insertAdjacentHTML("beforeend",'<button class="ftag on" data-cc="">🌍 All</button>');
   $("#popRow").addEventListener("click",e=>{const b=e.target.closest(".ftag");if(!b)return;state.cc=b.dataset.cc;state.page=1;$("#selCountry").value=state.cc;syncPop();apply()});
-  $("#hdr").innerHTML=[["stations",fmt(ALL.length)],["countries",fmt(META.country_count)],["all indexed",fmt(META.stats.stations)],["clicks / 24h",fmt(META.stats.clicks_last_day)],["snapshot",META.generated_local]]
-    .map(([k,v])=>`<span class="chip"><b>${esc(k)}</b>&nbsp; ${esc(v)}</span>`).join("");
   const L=ls.get("last",null); if(L&&L.m){ setStation(L.m); setPlaying(false); P.owner="main"; }
   $("#bar").style.display="flex"; setVolUI();
   syncBarSpace();
@@ -1142,7 +1154,8 @@ let ht; function writeHash(){ clearTimeout(ht); ht=setTimeout(()=>{ const h=new 
   history.replaceState(null,"","#"+h.toString()) },300) }
 const queueApply=()=>{state.page=1;apply();writeHash()};
 let deb;
-$("#q").addEventListener("input",()=>{state.q=$("#q").value.trim().toLowerCase();clearTimeout(deb);deb=setTimeout(queueApply,180)});
+$("#q").addEventListener("input",()=>{state.q=$("#q").value.trim().toLowerCase();clearTimeout(deb);deb=setTimeout(queueApply,180);
+  barPinned=false; syncBarAway();});
 $("#selCountry").onchange=e=>{state.cc=e.target.value;state.page=1;syncPop();apply();writeHash()};
 $("#selCodec").onchange=e=>{state.codec=e.target.value;queueApply()};
 $("#selBit").onchange=e=>{state.bit=+e.target.value;queueApply()};
