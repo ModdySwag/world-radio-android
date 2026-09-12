@@ -165,6 +165,13 @@ a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
    play, and steps aside again on the next keystroke in the search box. */
 #bar.wr-away{transform:translateY(115%);opacity:0;pointer-events:none}
 @media (prefers-reduced-motion: reduce){#bar{transition:none}}
+/* Desktop: a wide window has room the phone does not, so the two labelled controls sit at the
+   far right of the bar instead of crowding the station name, and they are given the same height
+   as the round controls beside them - they used to sit a head shorter than the row they are in. */
+@media(min-width:901px){
+  #btnBarSite{margin-left:auto}
+  #bar .btn{min-height:42px;display:inline-flex;align-items:center}
+}
 #bar .art{width:46px;height:46px;border-radius:10px 4px 10px 4px;object-fit:cover;border:1px solid var(--line);flex:0 0 auto}
 /* The name block. On a desktop it takes what its text needs and the controls follow it; below
    900px it has a zero flex-basis instead, because with a content-sized basis the row's
@@ -908,7 +915,10 @@ function popupBlockedNotice(){
   notice("🚫 <b>Your browser blocked the pop-up</b>, so the mini player is docked inside this page instead (bottom-right, resize it with S / M / L). To get it as a separate window you can drag anywhere, click your browser's <b>“pop-ups blocked”</b> icon in the address bar and choose <b>always allow pop-ups for this site</b>, then press ⧉ again.", "warn"); }
 $("#btnPop").addEventListener("click",togglePopOut);
 setInterval(updatePopBtn, 1000);
-window.addEventListener("message",e=>{ if(e.data==="rbg-pop-closed"){ winPop=null; updatePopBtn(); } });
+window.addEventListener("message",e=>{ if(e.data==="rbg-pop-closed"){
+  /* the mini player has left - a window closed, or a docked one asked to fold away. Either way
+     the button goes back to saying "Pop out" and the dock, if that is how it was showing, goes. */
+  winPop=null; if(dockOpen) dockHide(); updatePopBtn(); } });
 /* dock controls */
 $("#dockClose").addEventListener("click",dockHide);
 $("#dockS").onclick=()=>{const d=$("#dock");d.classList.remove("med","large");d.classList.add("small")};
