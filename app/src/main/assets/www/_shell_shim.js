@@ -656,23 +656,16 @@
 
   function toggleTheme() { return applyTheme(themeNow() === "light" ? "dark" : "light"); }
 
-  /* --------------------------------------------------- header stays put ---- */
+  /* ------------------------------------------- the header stays as the site drew it ----
 
-  /* The page can collapse its own header (its button, or the "h" shortcut, remembered in
-     storage). The app wants a static header, so the control goes away and a collapsed
-     state is never allowed to stick - however it got set. */
-  function keepHeaderStatic() {
-    var css = doc.createElement("style");
-    css.textContent = "#btnHdr{display:none !important}";
-    (doc.head || doc.documentElement).appendChild(css);
+     The site used to be able to collapse its own header (a button, and an "h" shortcut,
+     remembered in storage). That control is gone from the site, so the only thing left to do
+     here is clear a stale value a returning visitor may still carry, in case anything else
+     ever reads it. */
+  function settleHeader() {
     try { localStorage.setItem("rbg-hdr-compact", "false"); } catch (e) { }
     var head = $("#hdrHead");
-    if (!head) return;
-    var expand = function () {
-      if (head.classList.contains("compact")) head.classList.remove("compact");
-    };
-    expand();
-    new MutationObserver(expand).observe(head, { attributes: true, attributeFilter: ["class"] });
+    if (head && head.classList.contains("compact")) head.classList.remove("compact");
   }
 
   /* ------------------------------------------------------ random station ---- */
@@ -1044,7 +1037,7 @@
   killPopOut();
   externalLinks();
   suppressDiskNotice();
-  keepHeaderStatic();
+  settleHeader();
   injectThemeCss();
   applyTheme(themeNow(), false);
 
