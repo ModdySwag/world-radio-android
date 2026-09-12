@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "app": "MODDYS World Radio",
+  "platform": "android",
+  "appVersion": "1.6.0",
+  "download": "https://moddys.net/#download",
+
+  "os": {
+    "name": "Android",
+    "hard": { "api": 26, "label": "Android 8.0 (API 26)" },
+    "soft": { "api": 30, "label": "Android 11 (API 30)" },
+    "hardBlocksInstall": true
+  },
+
+  "engine": {
+    "name": "Android System WebView",
+    "label": "WebView",
+    "softMajor": 100,
+    "note": "playback happens in the device's Android System WebView, and its version - not the Android version - is what decides which streams decode"
+  },
+
+  "notice": {
+    "title": "Heads up: this Android version is older than the app is tuned for",
+    "body": "MODDYS World Radio installs on {hard} or newer, and is tuned for {soft} or newer.\n\nThis device reports {system}. The app will run, and this notice is the whole warning - expect rough edges.\n\nPlayback happens in the device's own {engine}, not in the app, and on a release this old that component is often years behind what the stations expect now. It is what decides whether a station decodes at all.\n\nTap \"What can this device play?\" to see that answer for this exact device: the Check panel lists the engine version, the formats it can decode, and how many of the 47,994 stations it can actually play.\n\nIf stations fail to start here, it is almost always the engine, not the app.",
+    "positiveAction": "Continue anyway",
+    "neutralAction": "What can this device play?"
+  },
+
+  "unsupported": {
+    "title": "MODDYS World Radio does not support this Android version",
+    "body": "The app needs {hard} or newer; this device reports {system}.\n\nWhy: the background-playback notification needs Android 8's notification channels, and the playback engine the catalogue depends on is far too old below this version to be worth pretending otherwise.\n\nInstall it on a newer device, or use moddys.net in this device's browser - the whole station list works there."
+  }
+}

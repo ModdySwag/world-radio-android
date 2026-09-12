@@ -42,7 +42,7 @@ jobs:
       - name: Verify the bundled web app is complete
         run: |
           set -e
-          for f in index.html stations.js countries.js _android_shim.js; do
+          for f in index.html stations.js countries.js _shell_shim.js compat.json; do
             test -s "app/src/main/assets/www/$f" || { echo "missing asset: $f"; exit 1; }
           done
           echo "assets ok"
@@ -80,7 +80,7 @@ jobs:
           else
             echo "WARNING: no v2/v3 signature block (v1 signing only)"
           fi
-          unzip -l "$APK" | grep -E "assets/www/(index.html|stations.js)"
+          unzip -l "$APK" | grep -E "assets/www/(index.html|stations.js|_shell_shim.js|compat.json)"
 
       - name: Name the download for humans
         run: cp app/build/outputs/apk/release/*.apk "world-radio-${{ github.ref_name }}.apk"

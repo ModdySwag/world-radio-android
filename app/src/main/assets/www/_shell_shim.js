@@ -1,4 +1,7 @@
-/* Android shell for MODDYS World Radio.
+/* Platform shell for MODDYS World Radio.
+ *
+ * ONE file, shipped byte-identical by the Android app and the iOS app; only the bridge
+ * behind it differs (see BRIDGE below). Nothing in here is platform-specific.
  *
  * Adds what the phone needs and removes what only makes sense on a desktop:
  *
@@ -16,17 +19,44 @@
  *
  * State comes from the page's own window.__dbg API where available and from the media
  * element's events otherwise, so playback survives that API changing.
+ *
+ * BRIDGE - the only difference between the two apps:
+ *
+ *   Android   window.WorldRadioJs      a synchronous @JavascriptInterface object
+ *   iOS       window.webkit.messageHandlers.wr   asynchronous postMessage, plus
+ *             window.__wrDevice       device facts injected before the page runs, because
+ *                                     WKWebView has no way to answer a JS call synchronously
+ *
+ * native() below hides that difference. Everything else is shared verbatim, so a fix to
+ * the player, the theme or the check panel lands on both platforms at once.
  */
 (function () {
   "use strict";
   if (window.__wr) return;                       // already injected
 
-  var host = window.WorldRadioJs;
+  var host = window.WorldRadioJs;                // Android, if we are on Android
+  var wk = null, ios = false;                    // iOS message handler, if we are on iOS
+  try {
+    wk = (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.wr) || null;
+  } catch (e) { wk = null; }
+  ios = !!wk && !host;
+
+  /* Call the native side by name on whichever bridge exists. Android answers synchronously
+     and iOS does not, so the return value is only meaningful on Android - which is why the
+     one call that needs an answer (device facts) reads window.__wrDevice on iOS. */
+  function native(name, args) {
+    try { if (host && typeof host[name] === "function") return host[name].apply(host, args || []); }
+    catch (e) { /* the shell is gone; the page must keep working without it */ }
+    try { if (wk) wk.postMessage({ m: name, a: args || [] }); }
+    catch (e) { /* ditto */ }
+    return null;
+  }
+
   var doc = document;
   var $ = function (sel) { return doc.querySelector(sel); };
 
   function report(msg) {
-    try { if (host && host.log) host.log(String(msg)); } catch (e) { /* shell gone */ }
+    native("log", [String(msg)]);
   }
 
   /* ---------------------------------------------------------------- state ---- */
@@ -56,9 +86,7 @@
     var key = (s.playing ? "1" : "0") + "|" + (s.cur || "") + "|" + (s.error || "");
     if (!force && key === lastKey) return;
     lastKey = key;
-    try {
-      if (host && host.state) host.state(!!s.playing, s.cur || "", s.error || "");
-    } catch (e) { /* shell gone */ }
+    native("state", [!!s.playing, s.cur || "", s.error || ""]);
   }
 
   /* ------------------------------------------------- controls on the page ---- */
@@ -70,7 +98,7 @@
   function openExternal(url) {
     if (!url) return;
     try {
-      if (host && host.url) { host.url(String(url)); return; }   // native browser
+      if (native("url", [String(url)]) !== null) return;   // native browser
     } catch (e) { /* fall through to the web behaviour */ }
     var w = window.__wrRealOpen ? window.__wrRealOpen(url, "_blank") : null;
     if (!w) { try { location.href = url; } catch (e2) { } }
@@ -819,13 +847,20 @@
 
   function deviceFacts() {
     var raw = null, d = {};
-    try { if (host && host.device) { raw = host.device(); } } catch (e) { raw = null; }
-    /* the Android bridge hands back a JSON string; a browser test hands back an object */
+    try {
+      if (host && typeof host.device === "function") {
+        raw = host.device();                            // Android: a synchronous JSON string
+      } else if (window.__wrDevice) {
+        raw = window.__wrDevice;                        // iOS: injected before the page ran
+      }
+    } catch (e) { raw = null; }
+    /* the Android bridge hands back a JSON string; a browser test or iOS hands back an object */
     if (typeof raw === "string") {
       try { d = JSON.parse(raw) || {}; } catch (e) { d = {}; }
     } else if (raw && typeof raw === "object") {
       d = raw;
     }
+    d.platform = d.platform || (ios ? "ios" : (host ? "android" : "web"));
     d.viewport = window.innerWidth + "x" + window.innerHeight;
     d.dpr = String(window.devicePixelRatio || 1);
     return d;
@@ -836,8 +871,37 @@
     function row(s, l, d) { rows.push({ s: s, l: l, d: d }); }
 
     row("ok", "Device", [dev.manufacturer, dev.model].filter(Boolean).join(" ") || "unknown");
-    row("ok", "Android", dev.api ? ("API " + dev.api + (dev.release ? " \u00b7 " + dev.release : "")) : "n/a");
-    row("ok", "WebView", dev.webview || "n/a");
+
+    /* The compatibility verdict is decided by the native side, which reads the same
+       compat.json the install-time gate uses - so this panel and the launch notice can
+       never disagree about whether this device is supported. */
+    var c = dev.compat || null;
+    if (c) {
+      var sysLine = c.system || "unknown";
+      if (!c.supported) {
+        row("warn", "System", sysLine + " \u2014 not supported: this app needs " +
+            (c.hardLabel || "a newer release") + " or newer");
+      } else if (!c.recommended) {
+        row("warn", "System", sysLine + " \u2014 below the " + (c.softLabel || "newer release") +
+            " this app is tuned for; it runs, with rough edges");
+      } else {
+        row("ok", "System", sysLine + " \u2014 supported");
+      }
+      row("info", "App needs", (c.hardLabel || "?") + " or newer \u00b7 tuned for " +
+          (c.softLabel || "?") + " or newer");
+    } else {
+      /* No native verdict (the page opened in a plain browser, or an older shell):
+         report what the page itself can see instead of inventing an answer. */
+      row("info", "System", (dev.platform || "web") + " " +
+          (dev.release || dev.osVersion || dev.api || "n/a"));
+      row("info", "App check", "not reported by this shell \u2014 open the app for the full check");
+    }
+
+    /* The engine, not the OS version, is what decides which streams can decode. */
+    var engineLabel = dev.engineLabel || (dev.platform === "ios" ? "WebKit" : "WebView");
+    var engineValue = dev.engine || dev.webview || "n/a";
+    row(engineValue === "n/a" ? "info" : "ok", engineLabel, engineValue);
+
     row("ok", "Screen", dev.viewport + " @ " + dev.dpr + "x");
 
     var mp3 = canPlay("audio/mpeg"), aac = canPlay('audio/mp4; codecs="mp4a.40.2"'),
@@ -893,9 +957,10 @@
 
   function checkReport() {
     var rows = checkRows();
+    var dev = deviceFacts();
     var L = ["MODDYS World Radio \u2014 system check",
-             "app " + (deviceFacts().app || "?"), ""];
-    rows.forEach(function (r) { L.push((r.s === "ok" ? "[ok]  " : "[!]   ") + r.l + ": " + r.d); });
+             (dev.platform || "?") + " \u00b7 app " + (dev.app || "?"), ""];
+    rows.forEach(function (r) { L.push((r.s === "ok" ? "[ok]  " : (r.s === "info" ? "[--]  " : "[!]   ")) + r.l + ": " + r.d); });
     L.push("", "UA: " + navigator.userAgent);
     return L.join("\n");
   }
@@ -1002,7 +1067,7 @@
     window.addEventListener("beforeunload", function () {
       clearInterval(tick);
       clearInterval(visTimer);
-      try { if (host && host.state) host.state(false, "", ""); } catch (e) { }
+      native("state", [false, "", ""]);
     });
 
     report("shim ready | station=" + (info().cur || "none"));
@@ -1021,6 +1086,20 @@
     check: renderCheck,
     checkToggle: toggleCheck,
     checkReport: checkReport,
+    /* Opened from the launch compatibility notice: expand the player AND show the check
+       panel, so "what can this device actually play?" is one tap from the warning. */
+    compat: function () {
+      if (sheetEl) {
+        if (!sheetEl.classList.contains("wr-check")) {
+          if (sheetEl.classList.contains("wr-viz")) { vizCycleTo(0); syncViz(); }
+          sheetEl.classList.add("wr-check");
+          var nav = sheetEl.querySelector('[data-wr="check"]');
+          if (nav) nav.classList.add("wr-on");
+        }
+        if (sheetCtl) { sheetCtl.measure(); sheetCtl.setOpen(true); }
+      }
+      return renderCheck();
+    },
     probe: probeAutoplay,
     playfail: function () {
       return { last: PLAYFAIL.last, gestureNeeded: PLAYFAIL.gestureNeeded,

@@ -107,6 +107,12 @@ public class MainActivity extends Activity {
                 try { view.getSettings().setMediaPlaybackRequiresUserGesture(false); } catch (Exception ignored) { }
                 String js = shim();
                 if (!js.isEmpty()) view.evaluateJavascript(js, null);
+                /* The compatibility notice needs the page up: its "what can this device
+                   play?" button opens the shell's own Check panel. It shows once per app
+                   version, and only when this device is below the version the app is
+                   tuned for. */
+                Compat compat = Compat.get(MainActivity.this);
+                if (compat != null) compat.maybeWarn(MainActivity.this);
             }
 
             /** Safety net: this app is a single page, so any attempt to navigate it
@@ -218,7 +224,7 @@ public class MainActivity extends Activity {
 
     private String shim() {
         if (shim != null) return shim;
-        try (InputStream in = getAssets().open("www/_android_shim.js")) {
+        try (InputStream in = getAssets().open("www/_shell_shim.js")) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             byte[] buf = new byte[8192];
             int n;
@@ -289,13 +295,23 @@ public class MainActivity extends Activity {
         public String device() {
             JSONObject o = new JSONObject();
             try {
+                Compat c = Compat.get(MainActivity.this);
                 o.put("manufacturer", Build.MANUFACTURER);
                 o.put("model", Build.MODEL);
                 o.put("api", Build.VERSION.SDK_INT);
                 o.put("release", Build.VERSION.RELEASE);
                 o.put("app", versionName());
                 o.put("webview", webViewVersion());
+                o.put("engine", webViewVersion());
+                o.put("engineLabel", "WebView");
+                o.put("platform", "android");
+                o.put("osName", "Android");
                 o.put("notifications", notificationsGranted());
+                /* The verdict itself, from the same compat.json the launch notice uses. */
+                if (c != null) {
+                    o.put("system", c.system());
+                    o.put("compat", c.forPage(MainActivity.this));
+                }
             } catch (Exception e) {
                 Log.w(TAG, "device(): " + e);
             }
