@@ -89,6 +89,22 @@
     native("state", [!!s.playing, s.cur || "", s.error || ""]);
   }
 
+  /* What the lock screen shows. The station, the country · language · codec · bitrate line and
+     the artwork URL - all of it read from the page's own bar, none of it invented here.
+     Android's shell ignores this message today; iOS builds its Now Playing card from it. */
+  var lastNow = null;
+  function pushNowPlaying() {
+    var nameNode = $("#bName"), metaNode = $("#bMeta"), artNode = $("#bArt");
+    var name = nameNode ? (nameNode.textContent || "").trim() : "";
+    if (name === "Pick a station") name = "";               // nothing chosen yet
+    var meta = metaNode ? (metaNode.textContent || "").trim() : "";
+    var art = artNode ? (artNode.getAttribute("src") || "") : "";
+    var key = name + "|" + meta + "|" + art;
+    if (key === lastNow) return;
+    lastNow = key;
+    native("nowplaying", [name, meta, art]);
+  }
+
   /* ------------------------------------------------- controls on the page ---- */
   /* Every action below drives a control the page already owns. Nothing is duplicated. */
 
@@ -998,8 +1014,16 @@
     return !!on;
   }
 
+  /* Mark the page as being inside the app. The site's own "Download the App" block (if it has
+     one - see the snippet that ships with the site) hides itself off this class, because a
+     download button inside the app is nonsense. Nothing else depends on it. */
+  function markAsApp() {
+    try { doc.documentElement.classList.add("wr-app"); } catch (e) { }
+  }
+
   /* -------------------------------------------------------------- assemble ---- */
 
+  markAsApp();
   killPopOut();
   externalLinks();
   suppressDiskNotice();
@@ -1007,14 +1031,25 @@
   injectThemeCss();
   applyTheme(themeNow(), false);
 
-  var sheet = buildSheet();
-  sheetEl = sheet;
-  /* No audio is touched at startup. v1.4.0 probed whether a tap is needed by playing
-     silence on launch - with no user gesture the WebView can refuse that probe, which
-     falsely marked the device as needing a tap AND poked the device's audio focus at
-     exactly the wrong moment. The answer now comes from a real failure, or from the
-     on-demand check (which runs with a gesture, so it tells the truth). */
-  if (sheet) {
+  /* The shell is injected by the native side, and on iOS that happens at the end of parsing -
+     which can be before the page has built its own bar. Waiting is what makes the player appear
+     on both platforms whichever came first; on Android the page is always loaded by the time
+     the shell injects, so the first attempt succeeds and nothing is deferred. */
+  var bootTries = 0;
+
+  function boot() {
+    var sheet = buildSheet();
+    sheetEl = sheet;
+    if (!sheet) {
+      if (++bootTries <= 40) { window.setTimeout(boot, 250); return; }     // up to 10 seconds
+      report("shim: no #bar found after 10s - player sheet not built");
+      return;
+    }
+    /* No audio is touched at startup. v1.4.0 probed whether a tap is needed by playing
+       silence on launch - with no user gesture the WebView can refuse that probe, which
+       falsely marked the device as needing a tap AND poked the device's audio focus at
+       exactly the wrong moment. The answer now comes from a real failure, or from the
+       on-demand check (which runs with a gesture, so it tells the truth). */
     var ctl = sheetController(sheet);
     sheetCtl = ctl;
     var syncNow = mirror(ctl);
@@ -1034,6 +1069,7 @@
       }
       pressLabel(playing);
       pushState(false);
+      pushNowPlaying();
     };
     var playBtn = sheet.querySelector('[data-wr="play"]');
     var playBig = sheet.querySelector('[data-wr="play2"]');
@@ -1071,9 +1107,9 @@
     });
 
     report("shim ready | station=" + (info().cur || "none"));
-  } else {
-    report("shim: no #bar found - player sheet not built");
   }
+
+  boot();
 
   /* The shell drives playback through these; keep the names stable. */
   window.__wr = {

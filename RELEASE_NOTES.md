@@ -1,68 +1,54 @@
-# MODDYS World Radio v1.5.0
+# MODDYS World Radio v1.6.0
 
-**This is the one that ends the "another app wants the sound" loop.** If the radio stopped a
-fraction of a second after you pressed play, and pressing Continue here only brought the same
-dialog back, install this. It goes straight over whatever you have — favourites are kept.
+**This is the one that tells you when your device is older than the app is tuned for** — and
+it is the release where the Android and iOS apps became one product instead of two.
 
-## What was really wrong
-
-Nothing else on the device was playing. **The app was fighting itself.**
-
-The radio's audio is played by the WebView engine, and that engine asks Android for audio
-focus on its own — as any media app does. The playback service asked for audio focus as well.
-Two requests from one app means one app that looks like two, and the framework reported the
-resulting shuffle back to us as a loss or a refusal — *about this app's own audio*:
-
-- the stream started, the framework reported a loss about the app's own player, and the radio
-  stopped a fraction of a second later — the "blip";
-- the shell saw that as another app taking over and put up a dialog naming an app that was
-  never there;
-- choosing **Continue here** asked for focus again, the same shuffle happened again, and the
-  dialog came straight back — forever.
-
-v1.3.0 made the same requests but only paused on a loss, which is why it felt fine; v1.4.0
-turned that reaction into a dialog, which is what made it impossible to escape.
+`world-radio-v1.6.0.apk` installs straight over 1.5.0. Favourites are kept.
 
 ## What changed
 
-- **The app no longer asks Android for audio focus at all.** The player handles that, because
-  it is the thing making the sound. No competing request, no verdict about our own audio,
-  nothing to fight.
-- **It no longer guesses who else is playing either.** Working that out would mean reading
-  Android's playback list and asking whose audio each entry is — and those methods
-  (`isActive`, `getClientUid`) are hidden from the public SDK. Every answer this app could
-  give would be a guess, and a wrong guess about another app is exactly what you saw. So the
-  dialog is gone: this app will never again tell you another app wants the sound.
-- **A stop is just a stop.** When the page stops for any reason, the notification stays up
-  with a **Play** button instead of vanishing, so there is always a way back — with no invented
-  reason printed on it.
-- **Nothing is played, paused or retried on its own.** Not on a timer, not after an
-  interruption, not for a device that wants a tap.
-- Everything from 1.4.x is still here: the Check panel (device, WebView version, codecs, how
-  much of the catalogue this device can play, copy report), the failure-name handling (a
-  tap-required device is never retried without one, an undecodable stream is never retried),
-  renderer recovery after a low-memory kill, and the no-WebView message.
-
-## What you give up
-
-Ducking. The old version lowered its own volume under a navigation prompt, which needed the
-focus request that caused all of this. With no focus request the radio may now simply be mixed
-with other sound on some devices. If you hear two things at once, pause the radio.
+- **A compatibility notice, once, at launch.** Android has always refused to *install* below
+  8.0 (`minSdkVersion 26`), and Play has always shown the requirement. What was missing was
+  the honest middle ground: a device that *can* install the app but is old enough that things
+  will misbehave. If yours is below **Android 11** — the version the app is tuned for — you get
+  one dismissible notice naming what you have, what it is tuned for, and which part is at
+  risk: playback happens in the device's own **System WebView**, not in the app, and on a
+  release that old that component is often years behind what the stations expect. There is a
+  button straight to the Check panel, so "what can this device actually play?" is one tap away.
+  Shown once per app version. Never a nag, never a dialog you cannot dismiss.
+- **`compat.json` is now the single source of truth** for those numbers — the launch notice,
+  the in-app Check panel and the website's download section all read the same file, so they
+  cannot drift apart. Changing the floors is a one-line edit.
+- **The Check panel reports the verdict properly**: the system line now carries the verdict
+  (supported / below the tuned-for version / not supported) instead of making you compare
+  numbers yourself, and the engine is reported as its own row, because its version — not the
+  Android version — is what decides which stations decode.
+- **This shim is now the shared shell.** `_android_shim.js` became `_shell_shim.js`, and the
+  iOS app ships the identical file: same player sheet, same gestures, same theme, same
+  visualiser, same compatibility panel. One fix lands on both platforms. The only difference
+  between them is ten lines of bridge (Android's synchronous JS interface vs iOS's message
+  handler), and the shim hides that from itself.
+- **The player now waits for the page.** If the shell is injected before the page has built
+  its own player bar — which is what happens on iOS, where injection is at the end of parsing —
+  it retries for ten seconds instead of giving up and reporting a dead player. On Android this
+  was never visible; it is what makes one shim work on both.
 
 ## Verified
 
-- **106 checks** driving the real player in a real browser, including that no dialog element
-  exists, that the shell has no audio-focus code path left, and that a playing stream is never
-  stopped or restarted by the app itself.
-- **58 project checks**, including that the service contains no focus request, no playback
-  observation, and no hidden-API call — and that the notification text never claims another
-  app is involved.
-- The published APK is checked after CI: identity, version, signature (the same key as every
-  release) and the absence of the focus code in `classes.dex`.
+- **38 checks** driving the real shell in a real browser, on all three paths: the Android
+  bridge, the iOS message-handler bridge, and no bridge at all (where the Check panel must say
+  "not reported by this shell" rather than invent a verdict). That includes the deferred
+  startup above, and that an external link still reaches the native side on both bridges.
+  It runs in CI on every push.
+- **Compat.java parses, and so does the asset it reads**: the APK build now fails if
+  `compat.json` is missing or is not valid JSON, and the release workflow asserts both new
+  files are inside the shipped APK.
+- The published APK is checked after CI as before: identity, version, signature (the same key
+  as every release) and the bundled assets.
 
 ## Install
 
-Download `world-radio-v1.5.0.apk` below and open it on the phone or tablet. It installs over
+Download `world-radio-v1.6.0.apk` below and open it on the phone or tablet. It installs over
 any older version — no uninstall, no lost favourites.
 
 **Privacy & safety:** the app talks to one thing only, the radio directory and the streams you

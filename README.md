@@ -8,6 +8,10 @@ the ~8,300 stations that stream over plain `http://`.
 The web app itself is untouched. If `moddys.net` changes, rebuild and you have the new
 version.
 
+**There is an iOS twin**: [world-radio-ios](https://github.com/ModdySwag/world-radio-ios).
+Both apps bundle the same site files and ship the **same shell script** — the player, the
+theme, the visualiser and the compatibility panel are one file, so a fix lands on both.
+
 ## What it does
 
 - **Background playback.** A `mediaPlayback` foreground service keeps the stream alive
@@ -89,10 +93,13 @@ reproducible.)
 
 | file | role |
 |---|---|
-| `MainActivity.java` | hosts the web app in a WebView; loads `_android_shim.js` after each page load; routes external links to the phone's browser |
-| `PlaybackService.java` | foreground service + `MediaSession` + notification; owns audio focus and forwards the system's verdict to the page; never touches audio itself |
-| `assets/www/_android_shim.js` | the only new front-end code: the player sheet, its visualiser styles and light mode, external-link routing, the banner suppression, and state reporting |
+| `MainActivity.java` | hosts the web app in a WebView; loads `_shell_shim.js` after each page load; routes external links to the phone's browser |
+| `PlaybackService.java` | foreground service + `MediaSession` + notification; never touches audio itself |
+| `Compat.java` | reads `compat.json`, decides whether this device is supported, and shows the one-time notice |
+| `assets/www/_shell_shim.js` | the only new front-end code: the player sheet, its visualiser styles and light mode, external-link routing, the banner suppression, and state reporting. **Byte-identical to the iOS app's copy** |
+| `assets/www/compat.json` | the version thresholds the notice, the Check panel and the website all read |
 | `res/xml/network_security_config.xml` | allows cleartext for the `http://` stations |
+| `tools/shim_harness.py` | drives that shell in a real browser on all three bridge paths |
 
 Playback stays in the page — its own single-owner model is not re-implemented. The shell
 reads state from the page's `window.__dbg` API and drives the page's existing play/stop
@@ -127,14 +134,27 @@ players that can disagree.
 | | |
 |---|---|
 | Android | **8.0 (API 26) and newer**, up to 15/16-era tablets; `targetSdk 34` |
+| Tuned for | **Android 11 (API 30)** and newer — below it, the app says so at launch and points you at the Check panel |
+| Installing on something older | Android's own installer refuses: the APK declares `minSdkVersion 26`, so Play shows the requirement and a sideload fails with "app not compatible". Nothing is downloaded that cannot run. |
 | Playback engine | the device's **Android System WebView** — its version, not the Android version, decides what plays |
 | Formats | MP3 and AAC everywhere; **HLS (`.m3u8`) only where the WebView can decode it** (about 3,000 of the stations are HLS) |
 | Cleartext | allowed app-wide: ~8,300 stations are plain `http://` |
 | No WebView at all | the app says so and tells you what to install, instead of crashing |
 
-The **Check** panel in the expanded player reports the WebView version, which formats the
-device can decode, and how many of the 47,994 stations it can actually play — with a
-**Copy report** button for sending that on. If stations misbehave on a device, that report
+**The compatibility notice.** Two levels, on purpose. The **hard** floor is 8.0, and Android
+enforces it at install time. The **soft** floor is Android 11, and below it the app shows one
+dismissible notice at first launch naming this device's version, the version it is tuned for,
+and exactly which part is at risk — the System WebView, which is what decodes the streams and
+is not something either you or the app can choose independently of the device. It appears once
+per app version, and there is a button straight into the Check panel.
+
+Both numbers live in `assets/www/compat.json`, which is also where the iOS app keeps its own
+(`iOS 15` to install, `iOS 18` tuned) and where the website's download section reads them from.
+One file per platform, one source of truth per number.
+
+The **Check** panel in the expanded player reports the verdict, the WebView version, which
+formats the device can decode, and how many of the 47,994 stations it can actually play — with
+a **Copy report** button for sending that on. If stations misbehave on a device, that report
 is the answer: it is almost always the WebView version or a missing codec.
 
 The **Playable** filter in the player hides anything this device cannot decode, so nobody

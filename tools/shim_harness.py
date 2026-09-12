@@ -24,12 +24,21 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT = os.path.dirname(HERE)
-SHIM = os.path.join(PROJECT, "app", "src", "main", "assets", "www", "_shell_shim.js")
-# The bundled copy is byte-identical to what the site serves, so either will do - prefer the
-# live site folder when it is on this machine, else the copy inside the project (CI).
+SHIM_CANDIDATES = [
+    # the Android project
+    os.path.join(PROJECT, "app", "src", "main", "assets", "www", "_shell_shim.js"),
+    # the iOS project
+    os.path.join(PROJECT, "Resources", "www", "_shell_shim.js"),
+]
+SHIM = next((p for p in SHIM_CANDIDATES if os.path.isfile(p)), SHIM_CANDIDATES[0])
+
+# The bundled copies are byte-identical to what the site serves, so either will do - prefer the
+# live site folder when it is on this machine, else the copy inside whichever project this is
+# (the Android repo keeps it under app/src/main/assets, the iOS repo under Resources/www).
 PAGE_CANDIDATES = [
     r"C:\Users\Moddy\radio-browser\deploy\index.html",
     os.path.join(PROJECT, "app", "src", "main", "assets", "www", "index.html"),
+    os.path.join(PROJECT, "Resources", "www", "index.html"),
 ]
 DEFAULT_PAGE = next((p for p in PAGE_CANDIDATES if os.path.isfile(p)), PAGE_CANDIDATES[0])
 
@@ -130,6 +139,9 @@ def run_platform(page, name, global_name, setup, device, headed):
     sheet = page.evaluate("!!document.getElementById('wrSheet')")
     check("%s: player sheet built" % name, sheet is True)
 
+    check("%s: marks the page as running inside the app" % name,
+          page.evaluate("document.documentElement.classList.contains('wr-app')") is True)
+
     res = page.evaluate("window.__wr.check()")
     rows = res["rows"]
     check("%s: check panel renders rows" % name, len(rows) >= 8, len(rows))
@@ -192,6 +204,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--page", default=DEFAULT_PAGE)
     ap.add_argument("--headed", action="store_true")
+    ap.add_argument("--only", default=None,
+                    help="run one bridge only: android, ios or web")
     a = ap.parse_args()
 
     from playwright.sync_api import sync_playwright
@@ -200,6 +214,9 @@ def main():
     page_url = "file:///" + a.page.replace("\\", "/")
     if not os.path.isfile(a.page):
         print("page not found: " + a.page, file=sys.stderr)
+        print("tried:", file=sys.stderr)
+        for candidate in PAGE_CANDIDATES:
+            print("  " + candidate, file=sys.stderr)
         return 2
     print("page: " + page_url)
     print("shim: " + SHIM)
@@ -211,6 +228,8 @@ def main():
             ("ios", "", IOS_SETUP, IOS_DEVICE),
             ("web", "", WEB_SETUP, None),
         ):
+            if a.only and a.only != name:
+                continue
             page = browser.new_page(viewport={"width": 412, "height": 915},
                                     device_scale_factor=2)
             page.set_default_timeout(15000)
@@ -230,6 +249,25 @@ def main():
                           fallback["d"] if fallback else None)
                     check("web: does not claim a platform verdict",
                           row(rows, "App needs") is None)
+
+                    # iOS injects the shim at the end of parsing, which can be before the page
+                    # has built its own bar. The shim must wait rather than give up.
+                    page.goto("about:blank")
+                    page.set_content("<html><body><div id='host'></div></body></html>")
+                    page.evaluate(open(SHIM, encoding="utf-8").read())
+                    check("deferred: shell installs with no bar present",
+                          page.evaluate("!!window.__wr") is True)
+                    check("deferred: no sheet before the bar exists",
+                          page.evaluate("!!document.getElementById('wrSheet')") is False)
+                    page.evaluate("""(() => {
+                      const b = document.createElement('div');
+                      b.id = 'bar';
+                      b.style.display = 'none';
+                      document.body.appendChild(b);
+                    })()""")
+                    page.wait_for_timeout(1200)
+                    check("deferred: sheet is built once the page's bar appears",
+                          page.evaluate("!!document.getElementById('wrSheet')") is True)
                 else:
                     run_platform(page, name, gname, setup % {"device": json.dumps(device)},
                                  device, a.headed)
