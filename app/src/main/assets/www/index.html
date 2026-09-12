@@ -662,6 +662,8 @@ const channel = (() => {
     close(){} };
 })();
 /* presence: pop-outs watch the main tab's heartbeat for their status badge */
+/* the heartbeat the mini player watches. Throttled in a background tab, so the reader must
+   tolerate a long gap - see mainAlive() in popout.html. */
 setInterval(()=>ls.set("alive-main",Date.now()),2500);   // ls adds the rbg- prefix
 /* ============================== player ============================== */
 /* SINGLE-STREAM POLICY: exactly one window holds the <audio> element. Every other window
@@ -743,7 +745,13 @@ function releaseToOther(kind){ try{audio.pause()}catch(e){} audio.removeAttribut
   if(ownMine()) ls.set("owner", { id:CID, kind:KIND, ts:Date.now()-60000, playing:P.playing, uuid:(P.cur&&P.cur.i)||null });
   P.mine=false; P.remoteKind=kind||"pop"; setPlaying(P.playing); bcastState(); }
 /* hand playback over when a window is about to disappear (main tab closed / reloaded) */
-window.addEventListener("pagehide",()=>{ if(ownMine()){
+window.addEventListener("pagehide",()=>{
+  /* Say goodbye out loud: the mini player watches this heartbeat to decide whether a page is
+     still there, and on a phone a backgrounded tab has its timers throttled (Chrome to about
+     once a minute, iOS may suspend it outright), so staleness alone cannot mean "gone". A page
+     that is really closing drops the beat to zero, which is unambiguous. */
+  ls.set("alive-main", 0);
+  if(ownMine()){
   ls.set("owner", { id:CID, kind:KIND, ts:Date.now()-60000, playing:P.playing, uuid:(P.cur&&P.cur.i)||null });  // release immediately (sync write survives unload)
   channel.post({type:"handoff", M:P.cur}); } });
 /* recents */
