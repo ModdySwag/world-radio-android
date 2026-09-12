@@ -211,7 +211,7 @@ def main() -> int:
     print("\n== the web app it carries ==")
     for asset in ("assets/www/index.html", "assets/www/_shell_shim.js",
                   "assets/www/compat.json", "assets/www/stations.js",
-                  "assets/www/countries.js"):
+                  "assets/www/countries.js", "assets/www/viz.js"):
         check("bundles %s" % asset, asset in names)
 
     if "assets/www/compat.json" in names:

@@ -180,6 +180,32 @@ def run_platform(page, name, global_name, setup, device, headed):
     check("%s: __wr.compat() opens the sheet and the check panel" % name,
           "wr-open" in cls and "wr-check" in cls, cls)
 
+    # The visualiser. The shell moves the page's canvas into its own panel and drives the page's
+    # own toggle, and the page now draws through the shared viz.js - so this is also the check
+    # that the file shipped INSIDE the app, which no other test would notice was missing.
+    page.evaluate("""(() => {
+      const b = document.querySelector('#wrVizOpts button');
+      if (b) b.click();
+    })()""")
+    page.wait_for_timeout(800)
+    viz = page.evaluate("""(() => {
+      const c = document.getElementById('viz'), wrap = document.getElementById('wrVizWrap');
+      if (!c) return {missing: 'no canvas'};
+      let painted = false;
+      try {
+        const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+        for (let i = 3; i < d.length; i += 4) if (d[i] > 0) { painted = true; break; }
+      } catch (e) { painted = 'unreadable: ' + e.message; }
+      return {loaded: !!window.Viz, styles: window.Viz ? window.Viz.STYLES.length : 0,
+              inPanel: !!wrap && wrap.contains(c), shown: getComputedStyle(c).display !== 'none',
+              size: c.width + 'x' + c.height, painted: painted};
+    })()""")
+    check("%s: the shared visualiser file is inside the app" % name,
+          viz.get("loaded") and viz.get("styles") == 5, viz)
+    check("%s: the visualiser draws in the shell's own panel" % name,
+          viz.get("inPanel") and viz.get("shown"), viz)
+    check("%s: and it is actually painting pixels" % name, viz.get("painted") is True, viz)
+
     # External links must reach the native side on both bridges (Android sync, iOS post).
     page.evaluate("""(() => {
       const a = document.createElement('a');

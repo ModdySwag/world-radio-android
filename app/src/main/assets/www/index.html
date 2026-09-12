@@ -41,6 +41,30 @@ h1 .brand{font-size:1.08em;letter-spacing:.2px;color:#fff;text-shadow:2px 2px 0 
 h1 .g{color:var(--lime)}h1 .o{color:var(--cyan)}
 header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-transform:uppercase;font-size:12px;letter-spacing:1px;
   color:#0c0d14;background:linear-gradient(90deg,var(--yel),var(--lime));padding:6px 12px;border-radius:3px;box-shadow:4px 4px 0 rgba(0,0,0,.4)}
+/* Phone and tablet: the tagline and the app button are placed, not left to the wrap. As two
+   flex items they stacked whenever the title happened to fill the line, which drops the whole
+   page down a row; a two-column grid row keeps them side by side at every width, with the
+   title above and the chips below. Both keep their tilt - that is what makes them badges. */
+@media(max-width:900px){
+  /* One flexible track and one sized by its content, with each badge pinned inside its own cell:
+     a badge has to keep the size of its own text. Three other arrangements were measured and all
+     fail - `auto` tracks swell to fill the grid (the tagline becomes a 345px yellow slab),
+     `max-content` tracks get inflated by the title (which spans both columns), and without
+     nowrap any track narrow enough for a phone folds the tagline inside its badge. */
+  header{display:grid;grid-template-columns:1fr auto;align-items:end;column-gap:10px;row-gap:6px}
+  header h1{grid-column:1 / -1}
+  header .spraytag{grid-column:1;justify-self:start;margin-left:0;white-space:nowrap}
+  header .wr-dl{grid-column:2;justify-self:end;margin-left:0}
+  header .chips{grid-column:1 / -1}
+  .wr-dl-btn{white-space:nowrap}
+}
+/* The narrowest phones: 320px leaves 288px of content, and the two badges together are about
+   300px at the sizes above, so they step down once more rather than one of them folding. */
+@media(max-width:365px){
+  header .spraytag{font-size:8.5px;letter-spacing:.2px;padding:4px 7px}
+  .wr-dl-btn{font-size:10px;padding:6px 8px}
+  header{column-gap:8px}
+}
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .chip{background:rgba(30,32,58,.8);border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--mut)}
 .chip b{color:var(--tx);font-weight:700}
@@ -141,6 +165,11 @@ a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
   padding:10px calc(14px + env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px));
   background:rgba(13,14,22,.97);border-top:3px solid;border-image:linear-gradient(90deg,var(--pink),var(--orange),var(--yel),var(--lime),var(--cyan),var(--purp)) 1}
 #bar .art{width:46px;height:46px;border-radius:10px 4px 10px 4px;object-fit:cover;border:1px solid var(--line);flex:0 0 auto}
+/* The name block. On a desktop it takes what its text needs and the controls follow it; below
+   900px it has a zero flex-basis instead, because with a content-sized basis the row's
+   line-breaking decides the row is full and wraps the last control onto a second line - which
+   is what a wrapped bar looks like: taller, and with the visualiser toggle stranded. */
+#bar .wr-nm{min-width:0;flex:0 1 auto}
 #bar .nm{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;cursor:pointer}
 #bar .nm:hover{color:var(--cyan)}
 #bar .who{font-size:11px;color:var(--mut)}
@@ -167,7 +196,6 @@ body{padding-bottom:var(--barh,0px)}
 @media(max-width:700px){
   #bar .who,#bar .badge,#btnBarSite,#bStop,#volPct{display:none}
   #bar{gap:8px;padding:8px calc(12px + env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) calc(12px + env(safe-area-inset-left,0px))}
-  #bar .art{width:38px;height:38px}
   #bar .bctrl{width:40px;height:40px;font-size:16px}
   #volWrap{flex:0 1 120px;min-width:64px}
   #bar .btn{min-width:40px}      /* the icon-only pop-out keeps a full-size tap target */
@@ -181,7 +209,20 @@ body{padding-bottom:var(--barh,0px)}
 #btnViz.pink{border-color:var(--pink);color:var(--pink)}
 /* The canvas is forced off below 900px, so the visualiser toggle down there was a button
    that could not do anything visible. Hide it where it cannot work. */
-@media(max-width:900px){#viz{display:none !important}#btnViz{display:none}}
+/* Tablet and phone. The row has no room for everything a desktop has, so it changes shape:
+   the artwork becomes the pop-out control (it is the obvious thing to tap to send the player
+   somewhere else), the button that used to be Pop-out becomes the visualiser toggle, and the
+   canvas opens as a strip UNDER the row rather than inside it. Desktop is untouched. */
+@media(max-width:900px){
+  #bar{flex-wrap:wrap}          /* only ever wraps for the visualiser strip's own line */
+  #bar .wr-nm{flex:1 1 0}
+  #bar .art{width:44px;height:44px}
+  #bar #viz{flex:1 1 100%;max-width:none;height:40px;order:9}
+  #btnPop{display:none}
+  #btnViz{display:inline-block}
+  #bArt.art-pop{cursor:pointer}
+  #bArt.art-pop:hover,#bArt.art-pop:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+}
 
 /* modal */
 #modal{position:fixed;inset:0;background:rgba(5,6,10,.78);z-index:80;display:none;align-items:center;justify-content:center;padding:18px}
@@ -312,6 +353,15 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
     padding:9px 13px;box-shadow:4px 4px 0 rgba(0,0,0,.4);transform:rotate(-1.4deg)}
   .wr-dl-btn:hover{filter:brightness(1.08)}
   .wr-dl-btn:active{transform:rotate(-1.4deg) translate(2px,2px);box-shadow:2px 2px 0 rgba(0,0,0,.4)}
+  /* Phone and tablet: the tagline and the app button share a line. Two tilted badges in a row
+     read as a header; stacked, they push the station list a whole line further down. Both give
+     up a little size to fit - and both keep their tilt, which is what makes them badges. */
+  @media(max-width:900px){
+    header .spraytag{font-size:10px;letter-spacing:.4px;padding:5px 9px}
+    .wr-dl{gap:1px}
+    .wr-dl-hint svg{width:26px;height:33px}
+    .wr-dl-btn{font-size:11px;padding:7px 10px}
+  }
   .wr-dl-panel{position:absolute;z-index:80;top:calc(100% + 10px);right:0;width:min(340px,88vw);
     background:var(--panel);border:2px solid var(--line);border-radius:10px;padding:12px;
     box-shadow:0 18px 50px rgba(0,0,0,.55);text-align:left}
@@ -433,7 +483,7 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
 
 <div id="bar">
   <img class="art" id="bArt" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='80'%3E📻%3C/text%3E%3C/svg%3E">
-  <div style="min-width:0;flex:0 1 auto">
+  <div class="wr-nm">
     <div class="nm" id="bName" title="Station details">Pick a station</div>
     <div class="who" id="bMeta"></div>
   </div>
@@ -443,7 +493,7 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
   <span id="volWrap"><input type="range" id="vol" min="0" max="1" step="0.01"><span id="volPct">90%</span></span>
   <button class="btn" id="btnBarSite" style="padding:6px 10px">Website</button>
   <button class="btn pink" id="btnPop" style="padding:6px 10px" aria-label="Open the pop-out mini player"><span class="ico" aria-hidden="true">⧉</span> <span class="lbl">Pop-out</span></button>
-  <button class="bctrl" id="btnViz" title="Visualiser: off — click to cycle 5 styles" style="width:38px;height:38px;font-size:15px">🎛</button>
+  <button class="bctrl" id="btnViz" title="Visualiser: off — click to cycle 5 styles" style="font-size:15px">🎛</button>
   <canvas id="viz" height="44" title="Decorative visualiser (radio streams are cross-origin, so this is a look, not a live spectrum)"></canvas>
 </div>
 
@@ -456,6 +506,8 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
 <div id="toast"></div>
 <div id="notice" role="status" aria-live="polite"></div>
 
+<!-- the five visualiser looks, shared with the mini player so the two cannot drift apart -->
+<script src="viz.js"></script>
 <script src="countries.js"></script>
 <script src="stations.js"></script>
 <script>
@@ -580,7 +632,11 @@ const unplayableCount = () => { if(_unplayable < 0){ let n = 0; for(let i=0;i<AL
 const STRIP_PROXY_LOGOS = true;
 const PROXY_LOGO_HOST = /(^|\.)(gstatic\.com|googleusercontent\.com|ggpht\.com)$/;
 function logoURL(s){
-  const u = (s && s.f) || ""; if(!u || !STRIP_PROXY_LOGOS) return u;
+  /* 614 entries in the catalogue have the STRING "null" in their logo field, and a card that
+     takes it literally asks the site for /null - a failed request and a console error per card,
+     a few hundred per page. Anything that is not a real address is treated as no logo. */
+  const u = (s && s.f) || ""; if(!u || u === "null" || u === "undefined") return "";
+  if(!STRIP_PROXY_LOGOS) return u;
   try { return PROXY_LOGO_HOST.test(new URL(u, location.href).hostname.toLowerCase()) ? "" : u; } catch(e){ return u; }
 }
 /* images that fail to load (stations with dead logos) simply disappear — no broken-image icons */
@@ -630,7 +686,8 @@ function setPlaying(on){ P.playing=on; P.mine=ownMine();
   syncPlayBtns(); }
 function setStation(m){ P.cur = m; if(!m){ $("#bName").textContent="Pick a station"; $("#bMeta").textContent=""; return; }
   $("#bName").textContent = m.n; $("#bMeta").textContent = flag(m.cc)+" "+countryOf(m)+" · "+(m.l||"")+" · "+(m.x||"")+(m.b?" "+m.b+"kbps":"");
-  if(m.f){ const im=new Image(); im.onload=()=>{$("#bArt").src=m.f}; im.src=m.f; }
+  const art=logoURL(m);
+  if(art){ const im=new Image(); im.onload=()=>{$("#bArt").src=art}; im.src=art; }
   ls.set("last",{m,ts:Date.now()}); }
 /* --- audio control: only an owner ever touches the element --- */
 let lastPlayErr = "", handover = false;
@@ -764,11 +821,40 @@ function updatePopBtn(){ const b=$("#btnPop"); if(!b) return; const open=popOutO
     b.textContent = open ? "⨯ Hide pop-out" : "⧉ Pop-out";
   }
   b.title = open ? "Hide the pop-out player — playback continues here"
-                 : "Open the pop-out mini player (it can keep playing after you close this page)"; }
+                 : "Open the pop-out mini player (it can keep playing after you close this page)";
+  syncArtPop(); }
 
 /* The bar is fixed and its height is not a constant (the visualiser adds a row, a phone makes
    the controls a size smaller), so measure it and publish it as --barh: the page pads itself by
    that much, and the back-to-top button and the toasts sit above it instead of behind it. */
+/* Tablet and phone have no room for a labelled Pop-out button, so the artwork takes the job:
+   tapping the artwork sends the player to the mini-player window, which is what a listener
+   reaches for anyway. The 🎛 toggle takes the space the Pop-out button used to hold. The
+   artwork only behaves this way while the row is narrow, and it says so - role, label and a
+   focus ring - because an image that acts like a button has to read like one. */
+function narrowBar(){ return !!(window.matchMedia && window.matchMedia("(max-width:900px)").matches); }
+function syncArtPop(){
+  const art=$("#bArt"); if(!art) return;
+  const narrow=narrowBar();
+  art.classList.toggle("art-pop",narrow);
+  if(narrow){
+    const open=popOutOpen();
+    art.setAttribute("role","button");
+    art.setAttribute("tabindex","0");
+    art.setAttribute("aria-label", open ? "Hide the pop-out player" : "Open the pop-out mini player");
+    art.title = open ? "Hide the pop-out player — playback continues here"
+                     : "Open the pop-out mini player (it can keep playing after you close this page)";
+  } else {
+    art.removeAttribute("role"); art.removeAttribute("tabindex");
+    art.removeAttribute("aria-label"); art.removeAttribute("title");
+  }
+}
+$("#bArt").addEventListener("click",()=>{ if(narrowBar()) togglePopOut(); });
+$("#bArt").addEventListener("keydown",e=>{
+  if(narrowBar() && (e.key==="Enter" || e.key===" ")){ e.preventDefault(); togglePopOut(); }
+});
+window.addEventListener("resize",syncArtPop);
+
 function syncBarSpace(){
   const b=$("#bar");
   const h=(!b || getComputedStyle(b).display==="none") ? 0 : Math.round(b.getBoundingClientRect().height);
@@ -898,7 +984,10 @@ $("#btnLocal").addEventListener("click", () => { if(!LOCAL_CC) return;
   apply(); writeHash(); applyLocalUI(); });
 
 /* ===== decorative visualiser: 5 styles, cycled by the 🎛 button ===== */
-const VIZSTYLES=["bars","waves","mirror","dots","blocks"];
+/* The five looks live in viz.js, which the mini player loads too. If it did not load at all,
+   the toggle still works and the canvas simply stays empty - the fallback names keep the rest
+   of the page (titles, the cycle) working. */
+const VIZSTYLES = (window.Viz ? Viz.STYLES : ["bars","waves","mirror","dots","blocks"]);
 const vizCanvas=$("#viz"), vctx=vizCanvas.getContext("2d");
 let vizOn=false, vizStyle=0, vizLevels=new Array(56).fill(0), vizLast=0;
 const VIZREDUCED = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -910,31 +999,16 @@ function vizSet(on,st){ vizOn=on; vizStyle=st||0; ls.set("viz",vizOn?vizStyle+1:
   if(vizOn) vizSize(); }
 $("#btnViz").addEventListener("click",()=>{ if(!vizOn) vizSet(true,0); else if(vizStyle<VIZSTYLES.length-1) vizSet(true,vizStyle+1); else vizSet(false,0); });
 window.addEventListener("resize",()=>{ if(vizOn) vizSize(); });
-function vizDraw(){ const W=vizCanvas.width,H=vizCanvas.height; vctx.clearRect(0,0,W,H);
-  const n=vizLevels.length, bw=W/n;
-  const grad=vctx.createLinearGradient(0,H,0,0);
-  grad.addColorStop(0,"#ff3ea5");grad.addColorStop(.35,"#ff9f1c");grad.addColorStop(.6,"#ffe14d");grad.addColorStop(.82,"#c9ff3d");grad.addColorStop(1,"#1fe3ff");
-  vctx.fillStyle=grad; vctx.strokeStyle=grad;
-  if(vizStyle===0){ for(let i=0;i<n;i++){ const h=vizLevels[i]*H*0.92+2; vctx.fillRect(i*bw+bw*0.16,H-h,bw*0.68,h); } }
-  else if(vizStyle===1){ vctx.lineWidth=Math.max(1.5,W*0.004); vctx.shadowColor="#1fe3ff"; vctx.shadowBlur=9;
-    vctx.beginPath(); for(let i=0;i<n;i++){ const x=i*bw+bw/2, y=H/2-(vizLevels[i]-0.32)*H*0.62; i?vctx.lineTo(x,y):vctx.moveTo(x,y); } vctx.stroke();
-    vctx.globalAlpha=.45; vctx.beginPath(); for(let i=0;i<n;i++){ const x=i*bw+bw/2, y=H/2+(vizLevels[i]-0.32)*H*0.55; i?vctx.lineTo(x,y):vctx.moveTo(x,y); } vctx.stroke();
-    vctx.globalAlpha=1; vctx.shadowBlur=0; }
-  else if(vizStyle===2){ for(let i=0;i<n;i++){ const h=vizLevels[i]*H*0.45+1.5; vctx.fillRect(i*bw+bw*0.16,H/2-h,bw*0.68,h); vctx.fillRect(i*bw+bw*0.16,H/2,bw*0.68,h); } }
-  else if(vizStyle===3){ const cols=n/2|0; for(let i=0;i<cols;i++){ const lv=Math.round(vizLevels[i*2]*6);
-      for(let j=0;j<lv;j++){ vctx.beginPath(); vctx.arc(i*(W/cols)+(W/cols)/2, H-6-j*((H-14)/6), Math.min((W/cols)*0.3,4), 0, 6.283); vctx.fill(); } } }
-  else { const cols=n/2|0; for(let i=0;i<cols;i++){ const lv=Math.ceil(vizLevels[i*2]*6);
-      for(let j=0;j<6;j++){ vctx.globalAlpha=j<lv?1:.15; vctx.fillRect(i*(W/cols)+2, H-4-(j+1)*((H-10)/6), Math.max(2,(W/cols)-4), Math.max(1,(H-10)/6-2)); } } vctx.globalAlpha=1; }
-  vctx.shadowBlur=0; }
+function vizDraw(){ if(!window.Viz){ vctx.clearRect(0,0,vizCanvas.width,vizCanvas.height); return; }
+  Viz.draw(vctx,vizCanvas.width,vizCanvas.height,vizLevels,vizStyle); }
+
 function vizLoop(t){ requestAnimationFrame(vizLoop);
   if(!vizOn||document.hidden) { vizLast=t; return; }
   const dt=Math.min(0.05,((t-vizLast)/1000)||0.016); vizLast=t;
   const active = (P.playing ? (P.mine ? 1 : 0.55) : 0.18) * (VIZREDUCED ? 0.45 : 1);
-  const now=t/1000, n=vizLevels.length;
-  for(let i=0;i<n;i++){ const base=0.5+0.5*Math.sin(now*1.7+i*0.35)+0.35*Math.sin(now*3.1+i*0.11)+0.25*Math.sin(now*5.3-i*0.7);
-    const tgt=Math.max(0,Math.min(1,(base*0.5+(Math.sin(now*9+i)*0.5+0.5)*0.28)*active+(VIZREDUCED?0:(Math.random()-0.5)*0.1*active)));
-    vizLevels[i]+=(tgt-vizLevels[i])*Math.min(1,dt*(4+7*active)); }
+  if(window.Viz) Viz.step(vizLevels,dt,active,VIZREDUCED,t/1000);
   vizDraw(); }
+
 vizSize(); requestAnimationFrame(vizLoop);
 const vizRestore=ls.get("viz",0); if(vizRestore>0) vizSet(true,Math.min(vizRestore-1,VIZSTYLES.length-1));
 
@@ -970,6 +1044,7 @@ function buildStatic(){
   syncBarSpace();
   if(window.ResizeObserver) new ResizeObserver(syncBarSpace).observe($("#bar"));
   window.addEventListener("resize",syncBarSpace);
+  syncArtPop();
 }
 function syncPop(){ document.querySelectorAll("#popRow .ftag").forEach(b=>b.classList.toggle("on",b.dataset.cc===state.cc)) }
 function renderTagRow(){ const counts=tagCounts(tagPoolRows()); const shown=counts.slice(0,visibleTags),rest=counts.length-shown.length;

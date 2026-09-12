@@ -50,7 +50,7 @@ jobs:
       - name: Verify the bundled web app is complete
         run: |
           set -e
-          for f in index.html stations.js countries.js _shell_shim.js compat.json; do
+          for f in index.html stations.js countries.js viz.js _shell_shim.js compat.json; do
             test -s "app/src/main/assets/www/$f" || { echo "missing asset: $f"; exit 1; }
           done
           grep -q "stations.js" app/src/main/assets/www/index.html
