@@ -704,12 +704,17 @@ function claimAndPlay(m){ if(ownMine()){ audioStart(m); addRecent(m); return; }
   setTimeout(()=>{ const r=relOwner();                        // …then confirm we won it
     if(r && r.id!==CID){ setStation(m); addRecent(m); P.remoteKind=r.kind||""; setPlaying(true); return; }
     audioStart(m); addRecent(m); }, 300 + Math.floor(Math.random()*180)); }
-/* ---------- the bar steps aside while you search, and stays when you press play ----------
-   One rule: while the search box has something in it the bar is away, so the results have the
-   room; pressing play pins it back (that is when you want the transport), and it stays pinned
-   until the next keystroke in the box. Emptying the box is no longer a search, so it returns. */
+/* ---------- the bar steps aside while you search - on the screens where it is in the way ----
+   On a tablet or a phone the bar covers the bottom of the results, so while the search box has
+   something in it the bar is away and the list gets the room. Pressing play pins it back (that
+   is when the transport matters) and it stays pinned until the next keystroke. Emptying the box
+   is no longer a search, so it returns.
+   On a desktop the window is short and wide and the bar sits along the bottom without hiding
+   anything worth reading, so there it simply stays: a control that vanishes while you type is
+   one you cannot reach when the track you were listening to needs pausing. */
 let barPinned=false;
-function barAway(){ const q=$("#q"); return !barPinned && !!q && q.value.trim()!==""; }
+function barAway(){ const q=$("#q");
+  return narrowBar() && !barPinned && !!q && q.value.trim()!==""; }
 function syncBarAway(){
   const away=barAway(), bar=$("#bar");
   if(!bar) return;
@@ -718,7 +723,7 @@ function syncBarAway(){
   if(away) document.documentElement.style.setProperty("--barh","0px"); else syncBarSpace();
 }
 function requestPlay(m){ const r=relOwner();
-  barPinned=true; syncBarAway();
+  barPinned=true; syncBarAway();          /* play brings it back and keeps it */
   if(r && r.id!==CID){ channel.post({type:"cmd",from:CID,cmd:"play",M:m});
     setStation(m); addRecent(m); P.remoteKind=r.kind||""; P.mine=false; setPlaying(true); return; }
   claimAndPlay(m); }
@@ -868,6 +873,7 @@ $("#bArt").addEventListener("keydown",e=>{
   if(narrowBar() && (e.key==="Enter" || e.key===" ")){ e.preventDefault(); togglePopOut(); }
 });
 window.addEventListener("resize",syncArtPop);
+window.addEventListener("resize",syncBarAway);   /* widening past 900px returns the bar */
 
 function syncBarSpace(){
   const b=$("#bar");
@@ -1156,6 +1162,24 @@ const queueApply=()=>{state.page=1;apply();writeHash()};
 let deb;
 $("#q").addEventListener("input",()=>{state.q=$("#q").value.trim().toLowerCase();clearTimeout(deb);deb=setTimeout(queueApply,180);
   barPinned=false; syncBarAway();});
+/* Committing a search means the typing is over, so the on-screen keyboard should go with it:
+   without this it stays up over the results you just searched for, covering the top of the list.
+   Both routes are handled - the Enter/Go key on the keyboard, and the search event that fires
+   when it is committed (the magnifying glass, the keyboard's Go, or the field's own ✕).
+   Blurring is what dismisses it on both Android and iOS. */
+function endSearchTyping(){ const q=$("#q"); if(!q) return;
+  q.blur();
+  /* Android and desktop close the keyboard on blur. iOS sometimes does not, and the documented
+     way to make it is to take the field out of play for a moment: a readonly field cannot be
+     typed into, so the keyboard has no reason to stay. It is restored immediately after, and
+     nothing is visible. */
+  if(document.activeElement === q){
+    q.setAttribute("readonly","readonly"); q.blur();
+    setTimeout(()=>q.removeAttribute("readonly"),120);
+  }
+}
+$("#q").addEventListener("keydown",e=>{ if(e.key==="Enter"||e.keyCode===13){ e.preventDefault(); endSearchTyping(); } });
+$("#q").addEventListener("search",endSearchTyping);
 $("#selCountry").onchange=e=>{state.cc=e.target.value;state.page=1;syncPop();apply();writeHash()};
 $("#selCodec").onchange=e=>{state.codec=e.target.value;queueApply()};
 $("#selBit").onchange=e=>{state.bit=+e.target.value;queueApply()};
