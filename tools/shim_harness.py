@@ -195,6 +195,28 @@ def run_platform(page, name, global_name, setup, device, headed):
     check("%s: an external link reaches the native side" % name, len(urls) == 1,
           calls)
 
+    # A relative same-site page (the site's downloads.html and friends) must NOT navigate the
+    # WebView away from the player: it is handed to the shell like an external link.
+    before = page.evaluate("location.pathname")
+    page.evaluate("""(() => {
+      const a = document.createElement('a');
+      a.href = 'downloads.html';
+      a.id = 'wrProbePage';
+      a.textContent = 'page';
+      document.body.appendChild(a);
+      a.click();
+    })()""")
+    page.wait_for_timeout(250)
+    after = page.evaluate("location.pathname")
+    calls = page.evaluate("window.__wrTest.calls")
+    urls = [c for c in calls if c[0] == "url"]
+    check("%s: a same-site page link does not navigate the player away" % name,
+          before == after, "%s -> %s" % (before, after))
+    check("%s: a same-site page link is handed to the native side" % name, len(urls) == 2, calls)
+    check("%s: it is handed over as an absolute URL" % name,
+          len(urls) == 2 and urls[1][1].startswith("file://") and
+          urls[1][1].endswith("downloads.html"), urls[1][1] if len(urls) == 2 else None)
+
     logs = [c for c in calls if c[0] == "log"]
     check("%s: the shim reports itself to the native side" % name,
           any("shim ready" in c[1] for c in logs), logs[:3])

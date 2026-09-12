@@ -172,13 +172,30 @@
   }
 
   /* The page's own buttons for a station's stream and homepage are plain target="_blank"
-     links, which a WebView with no second window drops on the floor. Catch them here. */
+     links, which a WebView with no second window drops on the floor. Catch them here.
+
+     Same-site pages go the same way. The app IS one page: a relative link to something like
+     downloads.html is not bundled, so following it in the WebView would replace the player
+     with a dead end and there would be no way back on iOS at all. So a relative .html link is
+     treated as external - handed to the native side, which refuses file:// and lets the link
+     do nothing, rather than losing the player. (Inside the app, the site's own download block
+     hides itself, so this is a safety net rather than the normal path.) */
   function externalLinks() {
     doc.addEventListener("click", function (ev) {
       var a = ev.target && ev.target.closest ? ev.target.closest('a[href]') : null;
       if (!a) return;
       var href = a.getAttribute("href") || "";
-      if (!/^https?:/i.test(href)) return;          // leave #anchors and mailto alone
+      if (!href || a.hasAttribute("download")) return;
+
+      if (!/^https?:/i.test(href)) {
+        if (href.charAt(0) === "#") return;                 // an in-page anchor
+        if (!/\.html?($|[?#])/i.test(href)) return;         // mailto:, tel:, data: etc.
+        var absolute = "";
+        try { absolute = new URL(href, location.href).href; } catch (e) { return; }
+        if (!absolute) return;
+        href = absolute;
+        report("same-site link handed to the shell: " + href);
+      }
       ev.preventDefault();
       ev.stopPropagation();
       openExternal(href);
