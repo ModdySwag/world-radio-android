@@ -73,14 +73,17 @@ header .chips{flex:1 1 100%}
 .fchip:hover{background:var(--purp);color:#fff}
 .fclear{border:2px solid var(--warn);background:rgba(255,159,28,.12);color:#ffd9a3;border-radius:6px 14px 6px 14px;padding:2px 10px;font-size:12px;font-weight:800;cursor:pointer}
 .fclear:hover{background:var(--warn);color:#231a05}
-#toTop{position:fixed;right:16px;bottom:88px;z-index:55;width:44px;height:44px;border-radius:50%;border:2px solid var(--pink);
+#toTop{position:fixed;right:16px;bottom:calc(var(--barh,0px) + 16px);z-index:55;width:44px;height:44px;border-radius:50%;border:2px solid var(--pink);
   background:rgba(13,14,22,.92);color:#fff;font-size:16px;cursor:pointer;display:none}
 #toTop.show{display:block}
 #toTop:hover{background:var(--pink);color:#1a0312}
 .more,.less{color:var(--cyan);font-size:12px;cursor:pointer;border:none;background:none;padding:4px 2px;font-weight:700}
 .resbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin:14px 0 8px;font-size:13.5px;color:var(--mut)}
 .resbar b{color:var(--tx)}
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+/* min(320px,100%) rather than a flat 320px: a 320px phone leaves 288px of content width, and a
+   320px minimum column then sticks 32px out of it - which is what makes the whole page 16px
+   wider than the phone and gets it scaled down to fit. Above 320px of room nothing changes. */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(320px,100%),1fr));gap:12px}
 .card{background:linear-gradient(160deg,#191a29 0%,#14151f 100%);border:1px solid rgba(255,255,255,.14);border-radius:var(--rough);padding:12px 14px;display:flex;flex-direction:column;gap:8px;position:relative;transition:border-color .12s,box-shadow .12s,transform .08s}
 .card:hover{border-color:var(--pink);box-shadow:4px 4px 0 rgba(255,62,165,.22);transform:translate(-1px,-1px)}
 .card::before{content:"";position:absolute;top:-1px;left:-1px;right:calc(100% - 26px);height:4px;background:linear-gradient(90deg,var(--pink),var(--orange),var(--yel));opacity:0;transition:opacity .15s}
@@ -134,7 +137,8 @@ a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
 @media(max-width:560px){#dock .dwin{width:100%;border-radius:0}}
 
 /* bottom mini player bar */
-#bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;align-items:center;gap:10px;padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));
+#bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;align-items:center;gap:10px;
+  padding:10px calc(14px + env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) calc(14px + env(safe-area-inset-left,0px));
   background:rgba(13,14,22,.97);border-top:3px solid;border-image:linear-gradient(90deg,var(--pink),var(--orange),var(--yel),var(--lime),var(--cyan),var(--purp)) 1}
 #bar .art{width:46px;height:46px;border-radius:10px 4px 10px 4px;object-fit:cover;border:1px solid var(--line);flex:0 0 auto}
 #bar .nm{font-weight:800;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;cursor:pointer}
@@ -144,15 +148,40 @@ a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
 .bctrl:hover{border-color:var(--cyan)}
 #bPlay.playing{background:var(--lime);border-color:var(--lime);color:#151605}
 #bPlay.pop{background:var(--purp);border-color:var(--purp);color:#fff}
-#volWrap{display:flex;align-items:center;gap:6px;flex:0 1 170px;min-width:110px}
-#vol{flex:1;accent-color:var(--pink)}
+#volWrap{display:flex;align-items:center;gap:6px;flex:0 1 140px;min-width:72px}
+/* min-width:0 matters: a range input's own minimum is about 129px, and without this it cannot
+   shrink, so it spills out of its wrapper and paints across the Pop-out button next to it. */
+#vol{flex:1;min-width:0;accent-color:var(--pink)}
+/* A control in this row must never be squeezed: a shrunk button wraps its own label onto three
+   lines, which made the Pop-out button 68px tall in a 62px row with its text cut off. */
+#bar .btn{flex:0 0 auto;white-space:nowrap}
+/* Fixed bar, so the page has to reserve its height or the last station cards sit under it.
+   --barh is measured in syncBarSpace() because the height changes (the visualiser adds a row). */
+body{padding-bottom:var(--barh,0px)}
 #volPct{font-size:11px;color:var(--mut);min-width:30px;text-align:right}
 .badge{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;border-radius:999px;padding:3px 8px;border:1px solid var(--line);color:var(--mut)}
 .badge.on{background:var(--purp);border-color:var(--purp);color:#fff;animation:blink 2s steps(2) infinite}
-@media(max-width:700px){#bar .who,#bar .badge,#btnBarSite,#barStop{display:none}}
+/* Phones: the row has to fit in 320-430px. Stop and Website go - which is what this rule was
+   always meant to do: it named #barStop, and there is no such element (the button is #bStop),
+   so Stop stayed on screen and ate the room the row no longer had. */
+@media(max-width:700px){
+  #bar .who,#bar .badge,#btnBarSite,#bStop,#volPct{display:none}
+  #bar{gap:8px;padding:8px calc(12px + env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) calc(12px + env(safe-area-inset-left,0px))}
+  #bar .art{width:38px;height:38px}
+  #bar .bctrl{width:40px;height:40px;font-size:16px}
+  #volWrap{flex:0 1 120px;min-width:64px}
+  #bar .btn{min-width:40px}      /* the icon-only pop-out keeps a full-size tap target */
+}
+/* The narrowest phones: the pop-out keeps its icon and its accessible name, and gives up the
+   word - 50px that the station name uses better. */
+@media(max-width:420px){#bar .lbl{display:none}}
+/* Touch, wherever it is: a control you cannot reliably hit is not a control. */
+@media(hover:none){#bar .btn{min-height:40px}}
 #viz{display:none;flex:1 1 240px;min-width:110px;max-width:560px;height:44px;border:2px solid var(--line);border-radius:10px;background:#0b0c12}
 #btnViz.pink{border-color:var(--pink);color:var(--pink)}
-@media(max-width:900px){#viz{display:none !important}}
+/* The canvas is forced off below 900px, so the visualiser toggle down there was a button
+   that could not do anything visible. Hide it where it cannot work. */
+@media(max-width:900px){#viz{display:none !important}#btnViz{display:none}}
 
 /* modal */
 #modal{position:fixed;inset:0;background:rgba(5,6,10,.78);z-index:80;display:none;align-items:center;justify-content:center;padding:18px}
@@ -164,7 +193,7 @@ a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
 #modal td:first-child{color:var(--mut);width:100px;font-weight:700}
 .macts{display:flex;gap:8px;flex-wrap:wrap}
 code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-break:break-all}
-#toast{position:fixed;bottom:64px;left:50%;transform:translateX(-50%);background:#241207;border:2px solid var(--warn);color:#ffe2bd;border-radius:12px;padding:9px 16px;font-size:13px;display:none;max-width:84vw;z-index:95;font-weight:600}
+#toast{position:fixed;bottom:calc(var(--barh,0px) + 24px);left:50%;transform:translateX(-50%);background:#241207;border:2px solid var(--warn);color:#ffe2bd;border-radius:12px;padding:9px 16px;font-size:13px;display:none;max-width:84vw;z-index:95;font-weight:600}
 /* persistent notice bar: capability/error messages the user should not miss */
 #notice{display:none;position:fixed;top:0;left:0;right:0;z-index:97;align-items:flex-start;gap:10px;
   background:linear-gradient(90deg,rgba(31,227,255,.18),rgba(160,107,255,.16));border-bottom:2px solid var(--cyan);
@@ -413,7 +442,7 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
   <button class="bctrl" id="bStop" title="Stop">⏹</button>
   <span id="volWrap"><input type="range" id="vol" min="0" max="1" step="0.01"><span id="volPct">90%</span></span>
   <button class="btn" id="btnBarSite" style="padding:6px 10px">Website</button>
-  <button class="btn pink" id="btnPop" style="padding:6px 10px">⧉ Pop-out</button>
+  <button class="btn pink" id="btnPop" style="padding:6px 10px" aria-label="Open the pop-out mini player"><span class="ico" aria-hidden="true">⧉</span> <span class="lbl">Pop-out</span></button>
   <button class="bctrl" id="btnViz" title="Visualiser: off — click to cycle 5 styles" style="width:38px;height:38px;font-size:15px">🎛</button>
   <canvas id="viz" height="44" title="Decorative visualiser (radio streams are cross-origin, so this is a look, not a live spectrum)"></canvas>
 </div>
@@ -726,9 +755,27 @@ let winPop = null, dockOpen = false;
 const popAliveFresh = () => (Date.now() - (ls.get("pop-alive",0)||0)) < 5000;   // a pop-out exists somewhere
 const popOutOpen = () => !!((winPop && !winPop.closed) || dockOpen || popAliveFresh());
 function updatePopBtn(){ const b=$("#btnPop"); if(!b) return; const open=popOutOpen();
-  b.textContent = open ? "⨯ Hide pop-out" : "⧉ Pop-out";
+  const ico=b.querySelector(".ico"), lbl=b.querySelector(".lbl");
+  if(ico && lbl){                       /* the label is a span so a phone can hide the word */
+    ico.textContent = open ? "⨯" : "⧉";
+    lbl.textContent = open ? "Hide pop-out" : "Pop-out";
+    b.setAttribute("aria-label", open ? "Hide the pop-out player" : "Open the pop-out mini player");
+  } else {
+    b.textContent = open ? "⨯ Hide pop-out" : "⧉ Pop-out";
+  }
   b.title = open ? "Hide the pop-out player — playback continues here"
                  : "Open the pop-out mini player (it can keep playing after you close this page)"; }
+
+/* The bar is fixed and its height is not a constant (the visualiser adds a row, a phone makes
+   the controls a size smaller), so measure it and publish it as --barh: the page pads itself by
+   that much, and the back-to-top button and the toasts sit above it instead of behind it. */
+function syncBarSpace(){
+  const b=$("#bar");
+  const h=(!b || getComputedStyle(b).display==="none") ? 0 : Math.round(b.getBoundingClientRect().height);
+  const now=h+"px";
+  if(document.documentElement.style.getPropertyValue("--barh")!==now)
+    document.documentElement.style.setProperty("--barh",now);
+}
 function dockShow(){ $("#dockFrame").src = "popout.html"; $("#dock").style.display="block"; dockOpen=true; updatePopBtn(); }
 function dockHide(){ $("#dock").style.display="none"; try{ $("#dockFrame").src = "about:blank"; }catch(e){} dockOpen=false; updatePopBtn(); }
 function togglePopOut(){
@@ -920,6 +967,9 @@ function buildStatic(){
     .map(([k,v])=>`<span class="chip"><b>${esc(k)}</b>&nbsp; ${esc(v)}</span>`).join("");
   const L=ls.get("last",null); if(L&&L.m){ setStation(L.m); setPlaying(false); P.owner="main"; }
   $("#bar").style.display="flex"; setVolUI();
+  syncBarSpace();
+  if(window.ResizeObserver) new ResizeObserver(syncBarSpace).observe($("#bar"));
+  window.addEventListener("resize",syncBarSpace);
 }
 function syncPop(){ document.querySelectorAll("#popRow .ftag").forEach(b=>b.classList.toggle("on",b.dataset.cc===state.cc)) }
 function renderTagRow(){ const counts=tagCounts(tagPoolRows()); const shown=counts.slice(0,visibleTags),rest=counts.length-shown.length;
