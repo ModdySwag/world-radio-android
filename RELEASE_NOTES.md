@@ -1,33 +1,41 @@
-# MODDYS World Radio v1.6.4
+# MODDYS World Radio v1.6.5
 
-A small one: the page inside the app catches up with the site, and this is the first release
-that will reach you through the updater rather than by hand.
-
-If you are on v1.6.3, open the app and it will offer this itself — **Update now**, one tap.
+Three fixes to how a long list behaves: searching again, scrolling through it, and the arrows at
+the top of it.
 
 ## What changed
 
-**The bundled page is current again.** The one visible difference: pressing Pop out no longer
-announces that a click is needed. On a phone a pop-out window usually cannot start audio until
-it has been touched, and the old code stopped the page to find that out, then asked you for a
-tap to get the music back. Now the page keeps playing, the player opens as a remote control,
-and the first touch in it takes the stream over without a word.
+**Searching again starts the new list at its top.** Before, searching from halfway down the
+previous results left you halfway down the new ones, reading whatever happened to be under your
+thumb. It now puts the first result just under the toolbar — and only when there is something to
+gain, so it never fights you while you are reading the top of a list. Same for the filter
+selects and Reset, which produce new lists the same way.
 
-Nothing native changed in this build — no new permissions, no new behaviour outside the page.
+**The toolbar and the filter panel step out of the way while you scroll.** Scrolling is reading
+time: the chrome slides away so more results fit, and comes straight back when the scrolling
+stops. Scroll back up and it returns at once. It stays put while the search field has focus —
+that is the keyboard's doing, not yours. Desktop keeps its toolbar throughout; there is nothing
+to win there.
+
+**The page arrows.** Reported twice, and this time I think I have it: some WebViews never
+deliver the click that should follow a touch, which is why the arrows worked everywhere I
+tested them and nowhere on a real phone. They now also listen for a touch that never became a
+click, with a guard so a real tap still counts once and not twice.
 
 ## Verified
 
-- `tools/apk_identity.py` reads the published APK: versionName `1.6.4`, versionCode 12, no
-  `.debug` suffix, same signing certificate as every release before it, and `compat.json`
-  naming this build
+- the suite that drives the real page: 129 checks including all of the above on a phone and on a
+  desktop — that a new search lands at the top of the new list, that the first result sits just
+  under the toolbar, that the chrome hides on a phone and never on a desktop, and that a touch
+  alone turns the page
+- `tools/shim_harness.py` drives the real shell over both bridges: 76 checks, including a touch
+  that never became a click turning the page, and a real tap advancing exactly one page
+- `tools/apk_identity.py` on the published APK: versionName `1.6.5`, versionCode 13, no `.debug`
+  suffix, same signing certificate as every release before it
 - the bundled `index.html` is byte-identical to the one `moddys.net` serves
-- `tools/shim_harness.py` drives the real shell over both bridges
 
 ## Install
 
-Nothing to do if you are on v1.6.3 — the app offers the update itself. Otherwise download
-`world-radio-v1.6.4.apk` and tap it.
-
-Needs Android 8.0 or newer (API 26); tuned for Android 11+.
+Open the app: it offers this itself — **Update now**, one tap. Your stations and favourites stay.
 
 ## Cheers Moddy !

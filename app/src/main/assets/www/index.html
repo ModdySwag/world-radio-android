@@ -67,6 +67,15 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
   #selCountry{flex:1 1 96px}
   .toolbar .btn{padding:8px 10px;font-size:12.5px;white-space:nowrap}
 }
+/* Scrolling is reading time: the toolbar and the filter panel get out of the way so more of the
+   list fits, and come back the moment the scrolling stops. Phone and tablet only - on a desktop
+   the toolbar shares a line with the search field and there is nothing to win. */
+@media(max-width:900px){
+  .toolbar,.facets{transition:transform .18s ease,opacity .16s ease}
+  body.scrolling .toolbar{transform:translateY(-130%);opacity:0;pointer-events:none}
+  body.scrolling .facets{opacity:0;pointer-events:none}
+}
+@media (prefers-reduced-motion:reduce){ .toolbar,.facets{transition:none} }
 @media(max-width:365px){
   header .spraytag{font-size:8.5px;letter-spacing:.2px;padding:4px 7px}
   .wr-dl-btn{font-size:10px;padding:6px 8px}
@@ -149,7 +158,9 @@ select:focus{border-color:var(--purp)}
 .play.on{background:var(--pink);border-color:#fff;color:#fff;animation:blink 1.1s steps(2) infinite}
 @keyframes blink{50%{background:var(--lime);border-color:var(--lime);color:#151605}}
 .pager{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
-.pager button{background:#10111c;border:2px solid var(--line);color:var(--tx);border-radius:10px;min-width:44px;min-height:44px;padding:4px 10px;cursor:pointer;font-size:14px;font-weight:700}
+/* touch-action:manipulation tells the WebView this control is a tap, not the first half of a
+   double-tap-to-zoom - without it a fast tap on an arrow can be held back or dropped entirely. */
+.pager button{background:#10111c;border:2px solid var(--line);color:var(--tx);border-radius:10px;min-width:44px;min-height:44px;padding:4px 10px;cursor:pointer;font-size:14px;font-weight:700;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .pager button:disabled{opacity:.3;cursor:default}
 .pager .pgstep{font-size:16px}                       /* the arrows: 44px, reachable with a thumb */
 .pager .pgno{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--cyan)}
@@ -978,6 +989,20 @@ ls.set("hdr-compact", false);
 $("#hdrHead").classList.remove("compact");
 $("#toTop").addEventListener("click", () => window.scrollTo({ top:0, behavior:"smooth" }));
 window.addEventListener("scroll", () => $("#toTop").classList.toggle("show", window.scrollY > 600), { passive:true });
+/* Type into the search field and the page moves a little by itself (the keyboard, the list
+   re-rendering). That is not reading time, so the chrome stays put while the field has focus. */
+let hideTimer=null, lastScrollY=0;
+window.addEventListener("scroll", () => {
+  const y = window.scrollY, down = y > lastScrollY + 4;
+  lastScrollY = y;
+  const reveal = () => { clearTimeout(hideTimer); document.body.classList.remove("scrolling"); };
+  if(window.innerWidth > 900) return reveal();                 // desktop keeps it
+  if(!down) return reveal();                                   // going back up is looking for it
+  if(document.activeElement === $("#q")) return reveal();      // typing moves the page by itself
+  if(!document.body.classList.contains("scrolling")) document.body.classList.add("scrolling");
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => document.body.classList.remove("scrolling"), 260);
+}, { passive:true });
 /* active-filter chips: see and remove any filter from one place */
 function renderActiveFilters(){
   const parts=[];
@@ -1174,7 +1199,16 @@ function pagerHTML(total){ const pages=Math.max(1,Math.ceil(total/PSZ)); if(stat
   out+=`<button class="pgstep" data-p="${cur+1}" ${cur>=pages?"disabled":""} title="Next page" aria-label="Next page">▶</button>`;
   return out }
 function bindPager(){ document.querySelectorAll(".pager").forEach(el=>{
-  el.onclick=e=>{const b=e.target.closest("button[data-p]");if(!b||b.disabled)return;state.page=+b.dataset.p;apply();writeHash();window.scrollTo({top:0})} }) }
+  const turn=p=>{ const now=Date.now(); if(now-(el.__turn||0)<340) return; el.__turn=now;
+    state.page=+p; apply(); writeHash(); window.scrollTo({top:0}); };
+  el.onclick=e=>{const b=e.target.closest("button[data-p]");if(!b||b.disabled)return;turn(+b.dataset.p)};
+  /* Some WebViews never deliver the click that should follow a touch - the double-tap-zoom
+     heuristic is the usual reason. If a touch ends on an arrow and no click turned the page
+     shortly afterwards, turn it here instead. The guard above makes the two routes exclusive,
+     so a working click is never counted twice. */
+  el.addEventListener("touchend",e=>{
+    const b=e.target.closest&&e.target.closest("button[data-p]"); if(!b||b.disabled) return;
+    setTimeout(()=>{ if(Date.now()-(el.__turn||0)>300) turn(+b.dataset.p); }, 300); },{passive:true}) }) }
 function apply(){ const t0=performance.now();
   const cmpx={k:(a,b)=>b.k-a.k,v:(a,b)=>b.v-a.v,n:(a,b)=>a.n.localeCompare(b.n),b:(a,b)=>(b.b||0)-(a.b||0)||b.k-a.k}[state.sort]||((a,b)=>b.k-a.k);
   const rows=[]; ALL.forEach((s,oi)=>{if(matchAll(s,{}))rows.push([s,oi])});
@@ -1193,12 +1227,25 @@ function readHash(){ const h=new URLSearchParams(location.hash.slice(1));
   state.tags=(h.get("t")||"").split(",").filter(Boolean);state.page=+h.get("p")||1;state.favOnly=h.get("f")==="1";
   if(h.has("pl")) state.playOnly = h.get("pl")!=="0";     // deep links can force the full list
   $("#q").value=state.q;$("#selCountry").value=state.cc;$("#selCodec").value=state.codec;$("#selBit").value=String(state.bit);$("#selSort").value=state.sort;syncPop() }
-let ht; function writeHash(){ clearTimeout(ht); ht=setTimeout(()=>{ const h=new URLSearchParams();
+let ht; function writeHash(){ clearTimeout(ht); ht=setTimeout(()=>{ try{ const h=new URLSearchParams();
   if(state.q)h.set("q",state.q);if(state.cc)h.set("c",state.cc);if(state.lang)h.set("l",state.lang);if(state.codec)h.set("x",state.codec);
   if(state.bit)h.set("b",state.bit);if(state.sort!=="k")h.set("s",state.sort);if(state.tags.length)h.set("t",state.tags.join(","));if(state.page>1)h.set("p",state.page);if(state.favOnly)h.set("f","1");
   if(!state.playOnly)h.set("pl","0");
-  history.replaceState(null,"","#"+h.toString()) },300) }
-const queueApply=()=>{state.page=1;apply();writeHash()};
+  /* history.replaceState throws outright on the app's file:// origin, and a URL that lost a
+     character of its hash must never stop the list from rendering. */
+  history.replaceState(null,"","#"+h.toString()) }catch(e){} },300) }
+/* Everything that produces a new list - the search box, the filter selects, Reset - comes
+   through here, and a new list should start at its beginning. Without this, searching again from
+   halfway down the previous results leaves you halfway down the new ones, reading whatever
+   happens to be under your thumb. The pager does not come through here: it has its own scroll. */
+const queueApply=()=>{state.page=1;apply();writeHash();scrollToResults()};
+function scrollToResults(){
+  const list=$("#list"); if(!list) return;
+  const tb=document.querySelector(".toolbar");
+  const off=(tb?tb.getBoundingClientRect().height:0)+10;      // the sticky toolbar sits over the top
+  const y=list.getBoundingClientRect().top+window.scrollY-off;
+  if(window.scrollY>y+4) window.scrollTo({top:Math.max(0,y)});  // only when there is something to gain
+}
 let deb;
 $("#q").addEventListener("input",()=>{state.q=$("#q").value.trim().toLowerCase();clearTimeout(deb);deb=setTimeout(queueApply,180);
   barPinned=false; syncBarAway();});

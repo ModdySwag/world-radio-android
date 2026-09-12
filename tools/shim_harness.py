@@ -249,6 +249,38 @@ def run_platform(page, name, global_name, setup, device, headed):
           len(urls) == 2 and urls[1][1].startswith("file://") and
           urls[1][1].endswith("downloads.html"), urls[1][1] if len(urls) == 2 else None)
 
+    # The pager inside the app. Reported from a phone: the arrows did nothing at all. The page
+    # turns them on a click, and a WebView can drop the click that should follow a touch - so the
+    # arrows also listen for a touch that never became one. Both routes are exercised here, and
+    # the guard that stops a real tap counting twice.
+    def page_number():
+        return page.evaluate("() => { const m = document.querySelector('#cntLine').textContent"
+                             ".match(/page\\s+(\\d+)/); return m ? +m[1] : -1; }")
+
+    page.evaluate("() => window.scrollTo({ top: 0 })")
+    start = page_number()
+    page.evaluate("""() => { const b = document.querySelector('#pagerTop button:last-of-type');
+        b.dispatchEvent(new Event('touchend', { bubbles: true })); }""")
+    page.wait_for_timeout(600)
+    after_touch = page_number()
+    check("%s: a touch that never became a click still turns the page" % name,
+          after_touch == start + 1, "%s -> %s" % (start, after_touch))
+
+    # and a normal tap must not be counted twice (touchend plus the click it did produce)
+    page.evaluate("""() => { const b = document.querySelector('#pagerTop button:last-of-type');
+        b.dispatchEvent(new Event('touchend', { bubbles: true })); b.click(); }""")
+    page.wait_for_timeout(700)
+    after_both = page_number()
+    check("%s: a real tap advances exactly one page, not two" % name,
+          after_both == after_touch + 1, "%s -> %s" % (after_touch, after_both))
+
+    # the back arrow returns
+    page.evaluate("""() => { const b = document.querySelector('#pagerTop button:first-of-type');
+        b.click(); }""")
+    page.wait_for_timeout(600)
+    check("%s: and the back arrow returns" % name, page_number() == after_both - 1,
+          "%s -> %s" % (after_both, page_number()))
+
     logs = [c for c in calls if c[0] == "log"]
     check("%s: the shim reports itself to the native side" % name,
           any("shim ready" in c[1] for c in logs), logs[:3])
