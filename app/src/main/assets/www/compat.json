@@ -2,7 +2,7 @@
   "schema": 1,
   "app": "MODDYS World Radio",
   "platform": "android",
-  "appVersion": "1.6.0",
+  "appVersion": "1.6.1",
   "download": "https://moddys.net/#download",
 
   "os": {
