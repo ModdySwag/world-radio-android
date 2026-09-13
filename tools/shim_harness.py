@@ -261,7 +261,10 @@ def run_platform(page, name, global_name, setup, device, headed):
 
     page.evaluate("() => window.scrollTo({ top: 0 })")
     start = page_number()
-    page.evaluate("""() => { const b = document.querySelector('#pagerTop button:last-of-type');
+    # The arrows BY NAME (.pgstep): the page numbers are buttons too now, and inside their own group
+    # one of them is "the last button of its type" as well - "button:last-of-type" would find the
+    # number, not the forward arrow.
+    page.evaluate("""() => { const b = document.querySelector('#pagerTop button.pgstep:last-of-type');
         b.dispatchEvent(new Event('touchend', { bubbles: true })); }""")
     page.wait_for_timeout(600)
     after_touch = page_number()
@@ -269,7 +272,7 @@ def run_platform(page, name, global_name, setup, device, headed):
           after_touch == start + 1, "%s -> %s" % (start, after_touch))
 
     # and a normal tap must not be counted twice (touchend plus the click it did produce)
-    page.evaluate("""() => { const b = document.querySelector('#pagerTop button:last-of-type');
+    page.evaluate("""() => { const b = document.querySelector('#pagerTop button.pgstep:last-of-type');
         b.dispatchEvent(new Event('touchend', { bubbles: true })); b.click(); }""")
     page.wait_for_timeout(700)
     after_both = page_number()
@@ -277,7 +280,7 @@ def run_platform(page, name, global_name, setup, device, headed):
           after_both == after_touch + 1, "%s -> %s" % (after_touch, after_both))
 
     # the back arrow returns
-    page.evaluate("""() => { const b = document.querySelector('#pagerTop button:first-of-type');
+    page.evaluate("""() => { const b = document.querySelector('#pagerTop button.pgstep:first-of-type');
         b.click(); }""")
     page.wait_for_timeout(600)
     check("%s: and the back arrow returns" % name, page_number() == after_both - 1,

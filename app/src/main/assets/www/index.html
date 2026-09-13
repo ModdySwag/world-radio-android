@@ -67,9 +67,10 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
   #selCountry{flex:1 1 96px}
   .toolbar .btn{padding:8px 10px;font-size:12.5px;white-space:nowrap}
   /* Phone and tablet: the pager takes a line of its own under the stations count and fills it -
-     arrows at the two ends, the page numbers spread between them - rather than bunching up on the
-     left with dead space beside it. */
+     back arrow at the left end, forward arrow at the right end, and the page numbers centred as a
+     group between them - rather than bunching up on the left with dead space beside it. */
   .resbar .pager{flex:1 1 100%;justify-content:space-between}
+  .resbar .pager .pgnums{flex:1 1 auto}
 }
 /* Landscape phones: the same four bars, just tighter. A 390px-tall viewport must not hand half of
    itself to chrome - and nothing else changes, the order and the shapes stay put. */
@@ -300,7 +301,15 @@ select:focus{border-color:var(--purp)}
 .play:hover{background:var(--pink);color:#1a0312;box-shadow:3px 3px 0 rgba(255,62,165,.4)}
 .play.on{background:var(--pink);border-color:#fff;color:#fff;animation:blink 1.1s steps(2) infinite}
 @keyframes blink{50%{background:var(--lime);border-color:var(--lime);color:#151605}}
-.pager{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+/* ============================== the pager ==============================
+   One row of 44px controls, the same on every format: the two arrows, then the page numbers in a
+   group of their own, then the read-out. The arrows are pinned to the two ends of the row on a
+   phone or tablet (the row is full length there, see the 900px query) and the numbers sit together
+   in the middle - the old layout spread the four items with a 136px hole between the back arrow
+   and the first number, which reads as a broken control rather than as spacing.
+   The read-out is where a page number is allowed: the count line above is only ever a count. */
+.pager{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.pager .pgnums{display:flex;gap:4px;align-items:center;justify-content:center;flex-wrap:wrap}
 /* touch-action:manipulation tells the WebView this control is a tap, not the first half of a
    double-tap-to-zoom - without it a fast tap on an arrow can be held back or dropped entirely. */
 .pager button{background:#10111c;border:2px solid var(--line);color:var(--tx);border-radius:10px;min-width:44px;min-height:44px;padding:4px 10px;cursor:pointer;font-size:14px;font-weight:700;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
@@ -308,6 +317,9 @@ select:focus{border-color:var(--purp)}
 .pager .pgstep{font-size:16px}                       /* the arrows: 44px, reachable with a thumb */
 .pager .pgno{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:var(--cyan)}
 .pager .pgap{opacity:.5;padding:0 2px}
+/* screen-reader only: the page change is announced, without a second visible read-out on a row that
+   has to hold two 44px arrows and the numbers on a 390px phone */
+.pgsr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .empty{color:var(--mut);text-align:center;padding:44px 0;font-size:15px}
 a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
 
@@ -677,9 +689,12 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
   </div>
 </div>
 
-<div class="resbar"><span class="pager" id="pagerTop"></span></div>
+<div class="resbar"><span class="pager" id="pagerTop" role="group" aria-label="Pages"></span></div>
 <div class="grid" id="list"></div>
-<div class="resbar" style="margin-top:14px"><span></span><span class="pager" id="pagerBottom"></span></div>
+<div class="resbar" style="margin-top:14px"><span></span><span class="pager" id="pagerBottom" role="group" aria-label="Pages"></span></div>
+<!-- The page change is announced here, once, rather than twice (one per pager) or twice over in the
+     visible read-outs. Screen readers get "Page 2 of 174"; nobody sees another number to read. -->
+<div id="pageSR" class="pgsr" role="status" aria-live="polite"></div>
 </div>
 
 <div id="dock"><div class="scrim" id="dockScrim"></div><div class="dwin" id="dockWin">
@@ -1915,29 +1930,71 @@ document.addEventListener("keydown",e=>{ const t=e.target, typing = t && (t.tagN
   else if(e.key==="v"||e.key==="V"){ $("#btnViz").click(); }
   else if(e.key==="a"||e.key==="A"){ openAddPanel(); }
   else if(e.key==="s"||e.key==="S"){ openMenu(menuOpen("saved") ? "" : "saved"); } });
-function pagerHTML(total){ const pages=Math.max(1,Math.ceil(total/PSZ)); if(state.page>pages)state.page=pages;
+/* ============================== the pager ==============================
+   Two copies of one control row (above and below the list) and ONE handler each, bound once for the
+   life of the page. bindPager() used to re-bind on every apply() - that is every keystroke in the
+   search field - and added another touchend listener each time without ever removing one (12 on a
+   pager after six letters, and climbing for the rest of the session). The containers are never
+   replaced by a render, only their innerHTML is, so binding once is enough and nothing piles up.
+
+   A tap is acted on ONCE. The browser's own click is the primary route - it is what a mouse sends,
+   and what a WebView sends for a touch - and the touchend timer is the fallback for a WebView that
+   sends no click at all. They are kept apart by one flag per touch: the click claims the touch it
+   belongs to (so the fallback then stands down), and the fallback claims it when no click came.
+   A click therefore needs no guard and can never be swallowed: the old rule - "no turn in the last
+   340ms" - measured the wrong thing, and a real tap 280ms behind its own fallback was dropped while
+   one 300.1ms behind was served twice. The buttons carry touch-action:manipulation, so the browser
+   sends their click immediately rather than after the old 300ms double-tap-zoom delay. */
+let lastTotal = 0;                // the filtered total the pager was built from, for clamping
+let touchTap = null;              // the touch in flight on a pager, if any
+function turnPage(p, el){
+  const pages = Math.max(1, Math.ceil(lastTotal / PSZ));
+  const want = Math.min(Math.max(1, +p || 1), pages);
+  if(want === state.page) return;                // pressing the page you are on
+  state.page = want;
+  apply(); writeHash();
+  /* Land on the RESULTS. This used to be window.scrollTo({top:0}), which threw the reader to the
+     very top of the page - on a phone that is the header and the search field, with the freshly
+     rendered page sitting below the fold. It looked exactly like an arrow that does nothing.
+     scrollToResults() is the helper the search box already uses: it measures the sticky toolbar and
+     only moves when there is something to gain, so tapping the bottom pager comes back up to the
+     first card of the new page and tapping the top one leaves a reader who is already there. */
+  scrollToResults();
+  const sr = document.getElementById("pageSR");
+  if(sr) sr.textContent = "Page " + want + " of " + pages;         // announced, not shown twice
+}
+function initPagers(){
+  document.querySelectorAll(".pager").forEach(el => {
+    if(el.__pagerBound) return;
+    el.__pagerBound = true;
+    const hit = e => { const b = e.target.closest && e.target.closest("button[data-p]");
+      return (b && !b.disabled && b.dataset.p != null) ? b : null; };
+    el.addEventListener("touchstart", () => { touchTap = { served:false }; }, { passive:true });
+    el.addEventListener("touchend", e => {
+      const b = hit(e); if(!b) return;
+      const t = touchTap = { served:false };     // a touchend with no touchstart is still a touch
+      setTimeout(() => { if(!t.served){ t.served = true; touchTap = null; turnPage(b.dataset.p, el); } }, 320);
+    }, { passive:true });
+    el.addEventListener("click", e => { const b = hit(e); if(!b) return;
+      if(touchTap && !touchTap.served) touchTap.served = true;   // this click IS that touch's click
+      touchTap = null;
+      turnPage(b.dataset.p, el); });
+  });
+}
+function pagerHTML(total){
+  const pages=Math.max(1,Math.ceil(total/PSZ)); if(state.page>pages)state.page=pages;
   const cur=state.page; const nums=[...new Set([1,pages,cur-1,cur,cur+1])].filter(p=>p>=1&&p<=pages).sort((a,b)=>a-b);
   /* The arrows are the control, so they get a real touch target (44px is the floor for a finger on
      glass, and at the old 31x28 a tap that misses by a few px does nothing at all - which reads as
      "the arrows don't work"). The page you are on is shown as plain text between them, so the
      number box that used to sit beside the pair is gone. */
-  let out=`<button class="pgstep" data-p="${cur-1}" ${cur<=1?"disabled":""} title="Previous page" aria-label="Previous page">◀</button>`; let last=0;
+  let out=`<button class="pgstep" data-p="${cur-1}" ${cur<=1?"disabled":""} title="Previous page" aria-label="Previous page">◀</button>` +
+          `<span class="pgnums">`; let last=0;
   nums.forEach(p=>{if(p-last>1)out+="<span class='pgap'>…</span>";
     out+=p===cur?`<span class="pgno" aria-current="page" title="Page ${p} of ${pages}">${p}</span>`
-                :`<button data-p="${p}" title="Page ${p} of ${pages}">${p}</button>`;last=p});
-  out+=`<button class="pgstep" data-p="${cur+1}" ${cur>=pages?"disabled":""} title="Next page" aria-label="Next page">▶</button>`;
+                :`<button data-p="${p}" title="Page ${p} of ${pages}" aria-label="Page ${p}">${p}</button>`;last=p});
+  out+=`</span><button class="pgstep" data-p="${cur+1}" ${cur>=pages?"disabled":""} title="Next page" aria-label="Next page">▶</button>`;
   return out }
-function bindPager(){ document.querySelectorAll(".pager").forEach(el=>{
-  const turn=p=>{ const now=Date.now(); if(now-(el.__turn||0)<340) return; el.__turn=now;
-    state.page=+p; apply(); writeHash(); window.scrollTo({top:0}); };
-  el.onclick=e=>{const b=e.target.closest("button[data-p]");if(!b||b.disabled)return;turn(+b.dataset.p)};
-  /* Some WebViews never deliver the click that should follow a touch - the double-tap-zoom
-     heuristic is the usual reason. If a touch ends on an arrow and no click turned the page
-     shortly afterwards, turn it here instead. The guard above makes the two routes exclusive,
-     so a working click is never counted twice. */
-  el.addEventListener("touchend",e=>{
-    const b=e.target.closest&&e.target.closest("button[data-p]"); if(!b||b.disabled) return;
-    setTimeout(()=>{ if(Date.now()-(el.__turn||0)>300) turn(+b.dataset.p); }, 300); },{passive:true}) }) }
 function apply(){ const t0=performance.now();
   const cmpx={k:(a,b)=>b.k-a.k,v:(a,b)=>b.v-a.v,n:(a,b)=>a.n.localeCompare(b.n),b:(a,b)=>(b.b||0)-(a.b||0)||b.k-a.k}[state.sort]||((a,b)=>b.k-a.k);
   const custom=refreshCustom();                      // catalogue + the user's own stations
@@ -1948,7 +2005,7 @@ function apply(){ const t0=performance.now();
      an added station that cannot be found is not an added station. The sort is stable, so the order
      WITHIN each group is still exactly what the sort control says. */
   if(custom.length) rows.sort((a,b)=>(isCustom(b[0])?1:0)-(isCustom(a[0])?1:0));
-  const total=rows.length;
+  const total=rows.length; lastTotal=total;
   const pages=Math.max(1,Math.ceil(total/PSZ)); if(state.page>pages)state.page=pages;
   const slice=rows.slice((state.page-1)*PSZ,state.page*PSZ);
   /* The count line is the number of stations the list is showing and nothing else - no page number,
@@ -1956,7 +2013,9 @@ function apply(){ const t0=performance.now();
      counted from, so the read-out never has to explain itself. */
   $("#cntLine").innerHTML=`<span style="margin:0"><b>${fmt(total)}</b> stations</span>`;
   refreshPlayableUI();
-  const ph=pagerHTML(total); $("#pagerTop").innerHTML=ph; $("#pagerBottom").innerHTML=ph; bindPager();
+  const ph=pagerHTML(total); $("#pagerTop").innerHTML=ph; $("#pagerBottom").innerHTML=ph;
+  initPagers();          // only ever binds a pager once (see the pager section above)
+  const sr=document.getElementById("pageSR"); if(sr) sr.textContent="Page "+state.page+" of "+pages;
   $("#list").innerHTML=slice.map(([s,oi])=>cardHTML(s,oi)).join("");
   refreshFavUI(); window.__perf=performance.now()-t0; document.body.dataset.ready="1"; }
 function readHash(){ const h=new URLSearchParams(location.hash.slice(1));
