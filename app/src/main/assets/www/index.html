@@ -185,6 +185,51 @@ select:focus{border-color:var(--purp)}
   background:rgba(13,14,22,.92);color:#fff;font-size:16px;cursor:pointer;display:none}
 #toTop.show{display:block}
 #toTop:hover{background:var(--pink);color:#1a0312}
+/* ===== Add a station: one discreet toolbar button, one centred form =====
+   The panel is NOT one of the toolbar pull-downs (MENUS) - it covers the page, so it is opened and
+   closed on its own. z-index 90 keeps it above the toolbar (50) and the pull-down (60) but below
+   the toast (95) and the notice bar (97): a notification about a stream the browser cannot play has
+   to be readable while the panel that caused it is still open. */
+#addPanel{position:fixed;inset:0;z-index:90;display:none;align-items:center;justify-content:center;
+  padding:18px;background:rgba(5,6,10,.78);overflow:auto;-webkit-overflow-scrolling:touch}
+#addPanel.show{display:flex}
+#addPanel[hidden]{display:none}
+#addBox{width:min(560px,100%);max-height:calc(100vh - 36px);overflow:auto;-webkit-overflow-scrolling:touch;
+  background:linear-gradient(160deg,#1a1b28 0%,#14151f 100%);border:1px solid var(--line);
+  border-radius:14px 6px 14px 6px;box-shadow:0 24px 60px rgba(0,0,0,.72);padding:16px 18px 18px}
+#addBox h3{margin:0 0 3px;font-size:19px;font-weight:900;letter-spacing:-.3px;text-transform:uppercase;
+  color:#fff;text-shadow:2px 2px 0 var(--pink)}
+#addBox .sub{margin:0 0 14px;color:var(--mut);font-size:12.5px;line-height:1.55}
+.afields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.af{display:flex;flex-direction:column;gap:4px;min-width:0}
+.af.wide{grid-column:1 / -1}
+.af label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:var(--mut)}
+.af label .opt{text-transform:none;letter-spacing:0;font-weight:600;opacity:.72}
+.af input,.af select{width:100%;min-width:0;background:#0d0e16;border:2px solid var(--line);color:var(--tx);
+  border-radius:10px;padding:9px 11px;font:inherit;font-size:14px;outline:none}
+.af input:focus,.af select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(31,227,255,.16)}
+#stStatus{margin:11px 0 0;font-size:12.5px;line-height:1.5;border-radius:10px;padding:8px 11px;display:none}
+#stStatus.show{display:block}
+#stStatus.ok{background:rgba(125,255,168,.12);border:1px solid rgba(125,255,168,.5);color:#c9ffd9}
+#stStatus.warn{background:rgba(255,180,84,.12);border:1px solid rgba(255,180,84,.55);color:#ffe0b5}
+#stStatus.bad{background:rgba(255,62,165,.13);border:1px solid rgba(255,62,165,.55);color:#ffd3ea}
+#addBox .howto{margin:12px 0 0;font-size:12px;line-height:1.6;color:var(--mut);
+  background:rgba(255,255,255,.035);border:1px dashed rgba(255,255,255,.16);border-radius:10px;padding:9px 12px}
+#addBox .howto b{color:var(--tx)}
+#addBox .howto code{color:var(--lime);font-size:11.5px;word-break:break-all}
+#addBox .aacts{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:14px 0 0;
+  /* Pinned to the bottom of the scrolling dialog: the form is nine fields and a how-to, and on a
+     phone the Add button would otherwise sit below the fold with the on-screen keyboard over it.
+     The fade is the dialog's own colour, so the fields scroll away underneath it cleanly. */
+  position:sticky;bottom:-18px;z-index:2;padding:10px 0 18px;
+  background:linear-gradient(180deg,rgba(20,21,31,0) 0%,#14151f 32%,#14151f 100%)}
+#addBox .aacts .grow{flex:1 1 auto}
+#addBox .aacts .btn{min-height:42px}
+/* The discreet button: the same shape as its neighbours in the row, quieter until it is wanted. */
+#btnAdd{background:transparent;border-color:rgba(255,255,255,.16);color:#c3c8dd;font-weight:700}
+#btnAdd:hover{border-color:var(--lime);color:var(--lime);box-shadow:3px 3px 0 rgba(201,255,61,.3)}
+#btnAdd[aria-expanded="true"]{border-color:var(--lime);color:var(--lime)}
+@media(max-width:560px){ .afields{grid-template-columns:1fr} #addBox{padding:14px 13px 15px} #addBox h3{font-size:17px} }
 .more,.less{color:var(--cyan);font-size:12px;cursor:pointer;border:none;background:none;padding:4px 2px;font-weight:700}
 .resbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin:14px 0 8px;font-size:13.5px;color:var(--mut)}
 .resbar b{color:var(--tx)}
@@ -594,7 +639,7 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
   <!-- The toolbar reads down the page in the order it gets used, one full-length bar at a time:
        row 1 the search field, row 2 how many stations are listed plus the Verified switch (the same
        bar shape as the field above it), row 3 Format / Bitrate / Country as equal thirds, row 4
-       Saved / Reset as equal halves. There is no genre pull-down any more: the search field finds
+       Add / Saved / Reset as equal thirds. There is no genre pull-down any more: the search field finds
        genres, so a second control for them only cluttered the page and fell apart in landscape.
        The DOM order IS the order on screen - flex-wrap fills the lines as the controls are written. -->
   <div class="searchwrap">
@@ -615,7 +660,8 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
     <select id="selCountry" title="Country"></select>
   </div>
 
-  <div class="tbgrid tb2">
+  <div class="tbgrid tb3">
+    <button class="btn" id="btnAdd" aria-expanded="false" aria-controls="addPanel" title="Add your own station to the list (shortcut: a)">➕ Add</button>
     <button class="btn" id="btnSaved" aria-expanded="false" aria-controls="savedMenu" title="Your saved stations (shortcut: s)">⭐ Saved <span id="favCount"></span><span class="cv">▾</span></button>
     <button class="btn" id="btnReset" title="Clear the search and every filter">Reset</button>
   </div>
@@ -663,6 +709,82 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
   <div id="mBody"></div>
   <div class="macts" id="mActs"></div>
 </div></div>
+
+<!-- ===== Add a station =====
+     It sits outside .toolbar on purpose: a phone scroll puts a transform on the toolbar, and a
+     position:fixed child of a transformed element is dragged and clipped by its ancestor - the
+     panel would slide off the screen with the toolbar. Here it belongs to <body> and to nothing
+     else, so it covers whatever the page is doing. -->
+<div id="addPanel" role="dialog" aria-modal="true" aria-labelledby="addTitle" hidden>
+  <div id="addBox">
+    <h3 id="addTitle">➕ Add a station</h3>
+    <p class="sub">Anything that streams audio: a local station the catalogue is missing, a favourite
+      that has gone, or a second, higher-quality stream of a station already listed.</p>
+    <div class="afields">
+      <div class="af wide">
+        <label for="stName">Station name <span class="opt">— what the card will show</span></label>
+        <input type="text" id="stName" autocomplete="off" placeholder="Fresh FM Adelaide">
+      </div>
+      <div class="af wide">
+        <label for="stUrl">Stream URL <span class="opt">— the audio itself, not the website</span></label>
+        <input type="url" id="stUrl" inputmode="url" autocomplete="off" spellcheck="false" placeholder="http://live.fresh927.com.au/freshmp3">
+      </div>
+      <div class="af">
+        <label for="stFormat">Format <span class="opt">— detected from the URL</span></label>
+        <select id="stFormat">
+          <option value="auto">Auto (detect from URL)</option>
+          <option value="MP3">MP3</option>
+          <option value="AAC">AAC / AAC+</option>
+          <option value="OGG">OGG Vorbis</option>
+          <option value="FLAC">FLAC</option>
+          <option value="UNKNOWN">Other / unknown</option>
+        </select>
+      </div>
+      <div class="af">
+        <label for="stBit">Bitrate <span class="opt">— kbps, optional</span></label>
+        <input type="number" id="stBit" min="0" max="1024" step="8" inputmode="numeric" placeholder="128">
+      </div>
+      <div class="af">
+        <label for="stCountry">Country <span class="opt">— optional</span></label>
+        <input type="text" id="stCountry" list="stCountryList" autocomplete="off" placeholder="Australia">
+        <datalist id="stCountryList"></datalist>
+      </div>
+      <div class="af">
+        <label for="stCity">City / state <span class="opt">— optional</span></label>
+        <input type="text" id="stCity" autocomplete="off" placeholder="Adelaide">
+      </div>
+      <div class="af">
+        <label for="stLang">Language <span class="opt">— optional</span></label>
+        <input type="text" id="stLang" autocomplete="off" placeholder="english">
+      </div>
+      <div class="af">
+        <label for="stTags">Genres <span class="opt">— commas, optional</span></label>
+        <input type="text" id="stTags" autocomplete="off" placeholder="community, talk, music">
+      </div>
+      <div class="af wide">
+        <label for="stHp">Website <span class="opt">— optional, shown as a link on the card</span></label>
+        <input type="url" id="stHp" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://fresh927.com.au">
+      </div>
+    </div>
+    <div id="stStatus" role="status" aria-live="polite"></div>
+    <div class="howto">
+      <b>How to:</b> paste the <b>stream address</b> itself — the one that ends in
+      <code>.mp3</code>, <code>.aac</code>, <code>.ogg</code> or <code>.m3u8</code>, or a bare
+      address such as <code>http://live.fresh927.com.au/freshmp3</code>. A station page or a
+      <code>.pls</code>/<code>.m3u</code>/<code>.xspf</code> playlist download will not play in a
+      browser: open that playlist in a desktop player (VLC) and copy the address it points to.
+      <b>Test stream</b> checks it here before you save; a station this browser cannot play is
+      refused, and one that will not play everywhere is flagged. Your stations stay in this
+      browser — nothing is uploaded.
+    </div>
+    <div class="aacts">
+      <button class="btn" id="stTest" type="button">Test stream</button>
+      <span class="grow"></span>
+      <button class="btn" id="stCancel" type="button">Cancel</button>
+      <button class="btn pink" id="stSave" type="button">Add station</button>
+    </div>
+  </div>
+</div>
 <button id="toTop" title="Back to top">▲</button>
 <div id="toast"></div>
 <div id="notice" role="status" aria-live="polite"></div>
@@ -687,6 +809,10 @@ if (!window.RB_META || !window.RB_STATIONS) {
   throw new Error("catalogue missing");
 }
 const META = window.RB_META, ALL = window.RB_STATIONS;
+/* allStations is the catalogue PLUS the stations the user added themselves (see refreshCustom, much
+   further down). Everything that lists, counts or plays a station reads this, never ALL, so the two
+   sets can never disagree about what exists. */
+let allStations = ALL;
 const $ = s => document.querySelector(s);
 const fmt = n => (n ?? 0).toLocaleString();
 const esc = x => String(x ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -784,7 +910,7 @@ function unplayableNotice(s, k){
   if (b) b.onclick = () => { document.getElementById("notice").className = ""; requestPlay(M(s)); };
 }
 let _unplayable = -1;
-const unplayableCount = () => { if(_unplayable < 0){ let n = 0; for(let i=0;i<ALL.length;i++) if(!playable(ALL[i])) n++; _unplayable = n; } return _unplayable; };
+const unplayableCount = () => { if(_unplayable < 0){ let n = 0; for(let i=0;i<allStations.length;i++) if(!playable(allStations[i])) n++; _unplayable = n; } return _unplayable; };
 /* Station logos: the catalogue gives us the broadcaster's own logo URL. A couple of percent of them
    sit behind Google's image proxy (gstatic / googleusercontent), which would mean requests to Google
    from a page that promises no third parties. Those logos are dropped (the card falls back to the flag
@@ -1006,7 +1132,9 @@ channel.on(m => {
     case "pop-hide": if(dockOpen) dockHide(); break;   // another tab asked the player to hide
     case "favupd": favSet=new Set(favList()); refreshFavUI(); if(state.favOnly) apply(); break;
     case "search": { const q=(m.q||"").toLowerCase(); if(!q) break; const out=[];
-      for(let i=0;i<ALL.length&&out.length<24;i++){ const s=ALL[i]; if((s.n+" "+countryOf(s)+" "+(s.t||"")+" "+(s.l||"")+" "+(s.x||"")).toLowerCase().includes(q)) out.push(M(s)); }
+      /* allStations, not ALL: the mini player's search finds the stations the user added themselves
+         too, exactly as the page's own search field does. */
+      for(let i=0;i<allStations.length&&out.length<24;i++){ const s=allStations[i]; if((s.n+" "+countryOf(s)+" "+(s.t||"")+" "+(s.l||"")+" "+(s.x||"")).toLowerCase().includes(q)) out.push(M(s)); }
       channel.post({type:"searchRes",id:m.id,res:out}); break; }
   }
 });
@@ -1234,6 +1362,319 @@ function openMenu(name){
 }
 Object.keys(MENUS).forEach(k => $(MENUS[k][0]).addEventListener("click", e => {
   e.stopPropagation(); openMenu(menuOpen(k) ? "" : k); }));
+
+/* ======================= add a station (your own streams) =======================
+   A user's own stations live in THIS browser and nowhere else (localStorage "rbg-custom") - the site
+   still sends nothing to anybody. They are merged into the list exactly like catalogue entries, so
+   every existing part of the page - the search, the three filters, sorting, the play button, the
+   star list, the mini player - works on them unchanged. They are listed BEFORE the catalogue, so a
+   station that was just added is the first card on the screen rather than 40,000 rows down.
+   The player's own rules are applied at the door: a stream this browser cannot play is refused, with
+   a notification that says why and what to do instead - never added and then silently dead. */
+const CUSTOM_KEY = "custom";
+function customStations(){
+  const v = ls.get(CUSTOM_KEY, []);
+  return Array.isArray(v) ? v.filter(s => s && s.n && s.u) : [];
+}
+let customSig = "";
+/* allStations is the catalogue plus the user's own stations; the list, the counts, the unplayable
+   tally and every card click read it, so one place decides what exists. It is rebuilt only when the
+   user's set really changes - a signature comparison keeps a 50,000-entry array copy out of every
+   keystroke in the search field. */
+function refreshCustom(){
+  const custom = customStations();
+  const sig = custom.map(s => s.i).join("|");
+  if(sig !== customSig){ customSig = sig;
+    allStations = custom.length ? custom.concat(ALL) : ALL;
+    _unplayable = -1;        // the count the Verified switch quotes has to be taken again
+    _byId = null;            // and the id lookup the Saved list uses has to be rebuilt
+  }
+  return custom;
+}
+const isCustom = s => !!(s && s.i && s.i.indexOf("custom-") === 0);
+/* One entry per stream, exactly the way the catalogue does it: a station offering an MP3 and an OGG
+   stream is two cards, each with its own play button. That is why the form takes one URL. */
+const CC_BY_NAME = (() => { const m = {};
+  (META.countries || []).forEach(c => { if(c && c.c) m[String(c.c).toLowerCase()] = c.cc; });
+  return m; })();
+const ccFor = name => CC_BY_NAME[String(name || "").trim().toLowerCase()] || "";
+/* The URL is all a page can see without downloading the stream, so detection is a hint for the card
+   and for the pre-flight check - never a promise. */
+function detectFormat(u){
+  const p = String(u || "").split("?")[0].split("#")[0].toLowerCase();
+  if(/\.mp3$/.test(p)) return "MP3";
+  if(/\.(aac|m4a|mp4)$/.test(p)) return "AAC";
+  if(/\.(ogg|oga|opus)$/.test(p)) return "OGG";
+  if(/\.flac$/.test(p)) return "FLAC";
+  if(/\.m3u8$/.test(p)) return "HLS";
+  return "UNKNOWN";
+}
+/* The catalogue's spelling of the same formats, so a stream typed in by hand is treated by the card
+   and by the Format filter exactly like one that came from the catalogue. HLS is a delivery format,
+   not a codec - those streams are AAC underneath, and the card marks the entry with its own HLS badge. */
+const CAT_FORMAT = { MP3:"MP3", AAC:"AAC+", OGG:"OGG", FLAC:"FLAC", HLS:"AAC", UNKNOWN:"UNKNOWN" };
+/* Can this browser play it? "No" is a notification, never a silent add. */
+const NOT_A_STREAM = /\.(pls|m3u|xspf|asx|wax|wpl|ram|smil)$/i;
+function checkStream(rawURL, format){
+  const u = String(rawURL || "").trim();
+  if(!u) return { level:"bad", msg:"Paste the stream address - the audio itself." };
+  let url; try { url = new URL(u); } catch(e){
+    return { level:"bad", msg:"That is not a complete web address: it has to start with http:// or https://." }; }
+  if(url.protocol !== "http:" && url.protocol !== "https:")
+    return { level:"bad", msg:"Only http:// and https:// addresses can be played." };
+  const path = url.pathname.toLowerCase();
+  if(NOT_A_STREAM.test(path))
+    return { level:"bad", msg:"That is a playlist file, not a stream - a web page cannot open a .pls/.m3u/.xspf. Open the playlist in a desktop player (VLC) and use the address it points to." };
+  if(/\.mpd$/i.test(path))
+    return { level:"bad", msg:"A DASH manifest (.mpd) cannot be played in a browser. Look for an .m3u8 (HLS) address, or a direct MP3/AAC stream." };
+  if(/\.m3u8$/i.test(path) && !CAP.hls)
+    return { level:"warn", short:"HLS is Safari/Android only", msg:"HLS (.m3u8) plays in Safari and Android Chrome only - here the station is added, but it stays listed as unplayable." };
+  if(CAP.https && url.protocol === "http:")
+    return { level:"warn", short:"plain http is blocked on https", msg:"This page is on https and browsers block plain http streams on it (mixed content). The station is added, but it only plays from an http page or in a desktop player." };
+  if(format === "UNKNOWN")
+    return { level:"warn", short:"no format in the address", msg:"No format is recognisable in that address. It may still work - many broadcasters hide it - so it is worth pressing Test stream." };
+  return { level:"ok", msg:"Looks like a playable " + format + " stream." };
+}
+
+/* ---- the panel ---- */
+const addPanel = $("#addPanel");
+const stEl = id => document.getElementById(id);
+const stStatus = stEl("stStatus");
+function setStatus(level, msg){ if(!stStatus) return;
+  stStatus.className = level ? ("show " + level) : ""; stStatus.textContent = msg || ""; }
+const resolvedFormat = () => { const f = stEl("stFormat").value;
+  return f === "auto" ? detectFormat(stEl("stUrl").value) : f; };
+function fillCountryList(){ const dl = stEl("stCountryList"); if(!dl || dl.childElementCount) return;
+  const seen = {};
+  (META.countries || []).forEach(c => { const n = c && c.c; if(n && !seen[n]){ seen[n] = 1;
+    dl.insertAdjacentHTML("beforeend", '<option value="' + esc(n) + '"></option>'); } }); }
+function openAddPanel(){
+  if(!addPanel) return;
+  openMenu("");                        // one surface at a time: the Saved pull-down closes
+  fillCountryList();
+  addPanel.hidden = false; addPanel.classList.add("show");
+  $("#btnAdd").setAttribute("aria-expanded", "true");
+  liveCheck();
+  stEl("stName").focus();
+}
+function closeAddPanel(){
+  if(!addPanel) return;
+  addPanel.classList.remove("show"); addPanel.hidden = true;
+  $("#btnAdd").setAttribute("aria-expanded", "false");
+  setStatus("", "");
+  $("#btnAdd").focus();
+}
+const addPanelOpen = () => !!(addPanel && !addPanel.hidden);
+/* A form that has just been used is emptied, a form that was cancelled is left alone: clearing on
+   Cancel throws away typing the user may want back, while leaving the values after a successful add
+   means the next visit starts with a URL that is already in the list. */
+function resetForm(){
+  ["stName","stUrl","stHp","stBit","stCountry","stCity","stLang","stTags"]
+    .forEach(id => { const el = stEl(id); if(el) el.value = ""; });
+  const f = stEl("stFormat"); if(f) f.value = "auto";
+  setStatus("", "");
+}
+/* The status line follows the URL as it is typed: a refusal is stated straight away, a warning when
+   there is something to warn about, and nothing at all for an empty field. */
+function liveCheck(){
+  const u = stEl("stUrl").value.trim();
+  if(!u){ setStatus("", ""); return null; }
+  const v = checkStream(u, resolvedFormat());
+  setStatus(v.level, (v.level === "ok" ? "\u2713 " : v.level === "warn" ? "\u26a0 " : "\u2717 ") + v.msg);
+  return v;
+}
+/* ---- testing a stream for real ----
+   "Test stream" answers one question: is there a playable audio stream at this address? It uses the
+   player and the network together (see below), it is muted so it can never make noise, and every
+   answer it gives names its evidence - a content type from the station's own server, the browser
+   decoding the audio, or an honest "could not confirm". It never says "playable" on a guess. */
+let testEl = null, testTimer = 0, testAbort = null, testResp = null;
+const MEDIA_BAD = "This browser could not open that address as audio. It is a web page, a playlist, or the stream is offline or blocked - open it in a desktop player to be sure.";
+const NET_BAD = "Nothing answered at that address - the host is unreachable or refused the connection. Check the spelling, or the station may be offline.";
+const NET_HTML = "That address answered with a web page, not audio. A stream address usually ends in .mp3, .aac, .ogg or .m3u8 - or is a bare address such as /freshmp3.";
+function finishTest(level, msg){
+  clearTimeout(testTimer);
+  if(testAbort){ try{ testAbort.abort(); }catch(e){} testAbort = null; }
+  if(testResp){ try{ testResp.body.cancel(); }catch(e){} testResp = null; }
+  const btn = stEl("stTest"); if(btn){ btn.disabled = false; btn.textContent = "Test stream"; }
+  if(testEl){ try{ testEl.pause(); testEl.removeAttribute("src"); testEl.load(); }catch(e){} testEl = null; }
+  setStatus(level, (level === "ok" ? "\u2713 " : level === "warn" ? "\u26a0 " : "\u2717 ") + msg);
+  if(level !== "ok") toast("\u26a0 " + msg, 8000);
+}
+/* Two independent probes, because neither alone tells the truth.
+   * The PLAYER probe is the browser's own answer: a media element is not subject to CORS, so it can
+     open streams fetch() never could - but in a browser that refuses unattended media it stays silent
+     for every address, good or bad, so silence must never be read as failure.
+   * The NETWORK probe asks the server whether anything is there at all, and reads the content type
+     when the station allows it. It is what separates "the host does not exist" from "the browser will
+     not load media right now", and it is the only one of the two that still works head-less.
+   The strongest answer either one gives wins; neither of them ever reports success on a guess. */
+function testStream(){
+  const u = stEl("stUrl").value.trim(); const btn = stEl("stTest");
+  const v = checkStream(u, resolvedFormat());
+  if(v.level === "bad"){ setStatus("bad", "\u2717 " + v.msg); toast("\u26a0 " + v.msg, 9000); return; }
+  finishTest("", ""); clearTimeout(testTimer);   // stop any run already going
+  setStatus("warn", "\u26a0 Checking the address\u2026");
+  btn.disabled = true; btn.textContent = "Testing\u2026";
+  const probes = { media:null, net:null, blocked:false, type:"" };
+  let settled = false;
+  const done = (level, msg) => { if(settled) return; settled = true; finishTest(level, msg); };
+  /* The strongest available answer, taken as soon as it exists. */
+  const report = () => {
+    if(settled) return;
+    const m = probes.media, n = probes.net;
+    if(m === "ok") return done("ok", "The stream is playing here - this station works in this browser.");
+    if(m === "bad") return done("bad", MEDIA_BAD);
+    if(n === "bad") return done("bad", NET_BAD);
+    if(n === "html") return done("bad", NET_HTML);
+    if(n === "ok") return done("ok", "The station's server answered with " + (probes.type || "an audio stream") + " - this address is a real stream.");
+    if(n === "other") return done("warn", "The address answered with " + (probes.type || "an unexpected type") + ", which is not an audio type. It may still work; only the play button can say for sure.");
+    /* Neither has an answer yet: what is left is the media probe's own verdict, or the server having
+       answered without letting us read the type (a cross-origin stream with no CORS headers). */
+    if(m === "warn" && n === "warn") return done("warn", "The station's server answered, but it blocks cross-origin checks, so the stream cannot be confirmed from here - use the play button on the card.");
+    if(probes.timedOut) return done("warn", probes.blocked
+      ? "This browser would not start the test on its own (autoplay policy) and nothing came back in 10 seconds - the play button on the card is the real test."
+      : "No answer within 10 seconds. The station may be slow or offline; it is not necessarily broken.");
+  };
+  /* ---- probe 1: the player ---- */
+  const el = new Audio(); testEl = el;
+  el.preload = "auto"; el.muted = true; el.volume = 0;      // muted: a test must never make noise
+  el.addEventListener("playing", () => { probes.media = "ok"; report(); });
+  el.addEventListener("loadedmetadata", () => { probes.media = "ok"; report(); });
+  el.addEventListener("error", () => { probes.media = "bad"; report(); });
+  el.src = u;
+  const p = el.play();
+  const poll = () => { if(settled) return;
+    if(el.readyState > 0){ probes.media = "ok"; return report(); }
+    if(el.networkState === 3){ probes.media = "bad"; return report(); }
+    probes.media = probes.media || "warn"; report(); };
+  if(p && p.catch) p.catch(err => { if(err && err.name === "NotAllowedError") probes.blocked = true; });
+  setTimeout(poll, 2500); setTimeout(poll, 6000);
+  /* ---- probe 2: the server ---- */
+  const A = new AbortController(); testAbort = A;
+  const timer = setTimeout(() => { try{ A.abort(); }catch(e){} }, 9000);
+  /* GET, not HEAD: stream servers routinely answer HEAD with an error (a live Icecast stream answered
+     HEAD with 400 and an HTML error page - a good station reported as a broken one). The headers are
+     read as soon as they arrive and the body is dropped immediately, so no audio is downloaded. */
+  (async () => {
+    const isAudio = t => /\baudio\/|application\/ogg|application\/vnd\.apple\.mpegurl|application\/x-mpegurl|application\/octet-stream/i.test(t || "");
+    try {
+      const r = await fetch(u, { mode:"cors", signal:A.signal });
+      const t = (r.headers.get("content-type") || "").split(";")[0].trim();
+      probes.type = r.ok ? t : ("HTTP " + r.status + (t ? " " + t : ""));
+      try{ testResp = r; }catch(e){}
+      probes.net = !r.ok ? (/text\/html/i.test(t) ? "html" : "bad")
+                         : (isAudio(t) ? "ok" : (/text\/html/i.test(t) ? "html" : "other"));
+      clearTimeout(timer); report(); return;
+    } catch(e) {
+      if(e && e.name === "AbortError"){ probes.timedOut = true; report(); return; }
+    }
+    /* No CORS headers (or no route): ask again opaque - an opaque answer still proves the host
+       answered, which is exactly the difference between a wrong address and a strict server. */
+    try {
+      await fetch(u, { mode:"no-cors", signal:A.signal });
+      probes.net = "warn"; probes.type = "an unreadable type (cross-origin)";
+    } catch(e2){ probes.net = "bad"; }
+    clearTimeout(timer); report();
+  })();
+  testTimer = setTimeout(() => { probes.timedOut = true; report(); }, 10000);
+}
+/* ---- saving ---- */
+function saveCustomStation(){
+  const name = stEl("stName").value.trim();
+  const u = stEl("stUrl").value.trim();
+  if(!name){ setStatus("bad", "\u2717 Give the station a name - that is what the card and the search will show.");
+    stEl("stName").focus(); toast("\u26a0 A station needs a name.", 6000); return; }
+  const fmt = resolvedFormat();
+  const v = checkStream(u, fmt);
+  if(v.level === "bad"){ setStatus("bad", "\u2717 " + v.msg); toast("\u26a0 Not added - " + v.msg, 9000);
+    stEl("stUrl").focus(); return; }
+  const hp = stEl("stHp").value.trim();
+  if(hp && !/^https?:\/\//i.test(hp)){ setStatus("bad", "\u2717 The website has to start with http:// or https://.");
+    stEl("stHp").focus(); return; }
+  const list = customStations();
+  /* The same stream twice is a list that plays the same thing twice - and the second one is invisible
+     as a mistake, because both cards look right. Refused, and it says which entry already has it. */
+  const dupe = list.filter(s => s.u === u)[0];
+  if(dupe){ setStatus("bad", "\u2717 That stream is already in your stations" +
+      (dupe.n !== name ? " as \u201c" + dupe.n + "\u201d" : "") + " - nothing was added.");
+    toast("\u26a0 Already in your stations: " + dupe.n, 7000); stEl("stUrl").focus(); return; }
+  const country = stEl("stCountry").value.trim();
+  const station = {
+    i: "custom-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+    n: name, u: u, hp: hp,
+    c: country, cc: ccFor(country) || "",
+    s: stEl("stCity").value.trim(),
+    l: stEl("stLang").value.trim().toLowerCase(),
+    t: stEl("stTags").value.trim() || "mine",
+    x: CAT_FORMAT[fmt] || "UNKNOWN",
+    b: Math.max(0, Math.min(1024, +stEl("stBit").value || 0)),
+    hl: /\.m3u8(\?|#|$)/i.test(u) ? 1 : 0,
+    v: 0, k: 0, f: ""
+  };
+  list.unshift(station); ls.set(CUSTOM_KEY, list);
+  refreshCustom();
+  resetForm();
+  closeAddPanel();
+  /* Show it. A station nobody can see has not been added, as far as anyone can tell: the search goes
+     back to empty (a filter typed a moment ago would hide the new card), the Saved-only filter goes
+     off, and the list starts at its first page - where the user's own stations now sit. */
+  state.q = ""; $("#q").value = ""; state.favOnly = false; state.page = 1;
+  apply(); writeHash(); scrollToResults();
+  const k = playKind(station);
+  /* A warning is kept SHORT in the toast: the full sentence is in the status line and stays there
+     while the panel is open, and a toast that has to be read twice is a toast nobody reads. */
+  const note = v.level === "warn" && v.short ? " \u2014 flagged: " + v.short : "";
+  /* Is it actually on the screen? The search and the Saved-only filter were cleared, so anything
+     still hiding it is one of the three selects, the bitrate floor, or Verified. Saying "added" and
+     leaving the user staring at a list without it is the one outcome this feature must never have. */
+  const kWhy = (KIND_TEXT[k] || KIND_TEXT[3]).why;
+  const hidden = !matchAll(station, {});
+  if(!hidden){
+    toast("\u2713 " + name + " added - it is the first card in the list" + note +
+      (k !== 1 ? " (\u26a0 this browser can't play that stream: " + kWhy + ")" : ""),
+      (v.level === "warn" || k !== 1) ? 8000 : 5200);
+  } else if(k === 1){
+    toast("\u2713 " + name + " added.", 5000);
+    notice("\u26a0 <b>" + esc(name) + "</b> was added, but a filter is hiding it from the list." +
+      '<button type="button" class="nbtn" id="noticeClearF">clear the filters</button>', "warn");
+    const b = document.getElementById("noticeClearF");
+    if(b) b.onclick = () => { Object.assign(state, { q:"", cc:"", lang:"", codec:"", bit:0, tags:[], favOnly:false, page:1 });
+      $("#q").value = ""; $("#selCountry").value = ""; $("#selCodec").value = ""; $("#selBit").value = "0";
+      apply(); writeHash(); };
+  } else {
+    /* Added, but this browser cannot play it, so Verified is hiding it. Say so, and offer the one
+       click that shows it - rather than a station that vanished into a filter. */
+    toast("\u2713 " + name + " added.", 5000);
+    notice("\u26a0 <b>" + esc(name) + "</b> was added, but this browser can't play it - " + kWhy +
+      ", so it stays hidden while <b>Verified</b> is on." +
+      '<button type="button" class="nbtn" id="noticeShowAll">show every station</button>', "warn");
+    const b = document.getElementById("noticeShowAll");
+    if(b) b.onclick = () => { state.playOnly = false; ls.set("playonly", false); state.page = 1;
+      refreshPlayableUI(); apply(); writeHash(); };
+  }
+}
+function deleteCustomStation(id){
+  const gone = customStations().filter(s => s.i === id)[0];
+  ls.set(CUSTOM_KEY, customStations().filter(s => s.i !== id));
+  refreshCustom(); apply();
+  toast(gone ? "\u2715 " + gone.n + " removed from your stations" : "Station removed", 4200);
+}
+/* ---- wiring ---- */
+if(addPanel){
+  $("#btnAdd").addEventListener("click", e => { e.stopPropagation();
+    addPanelOpen() ? closeAddPanel() : openAddPanel(); });
+  stEl("stCancel").addEventListener("click", closeAddPanel);
+  stEl("stSave").addEventListener("click", saveCustomStation);
+  stEl("stTest").addEventListener("click", testStream);
+  addPanel.addEventListener("click", e => { if(e.target === addPanel) closeAddPanel(); });
+  ["stUrl", "stFormat", "stCountry", "stBit", "stName"].forEach(id => stEl(id).addEventListener("input", liveCheck));
+  /* Enter anywhere in the form saves it: this is a one-station form, so what the user wants next is
+     the card, not another field. */
+  addPanel.addEventListener("keydown", e => { if(e.key === "Enter" && e.target && e.target.tagName !== "TEXTAREA"){
+    e.preventDefault(); saveCustomStation(); } });
+}
+/* Merge custom stations into the list
 /* Reading the click's PATH rather than its target: a press can re-render the panel under the finger
    (a saved row's play / drop does), which detaches the element the click came from - and a detached
    target matches nothing. The path is captured at dispatch, so it still names the panel. */
@@ -1324,7 +1765,7 @@ window.addEventListener("scroll", () => {
    Rows carry the same three things a card does - play, details, keep/drop - so nothing is lost by
    not being in the grid. */
 let _byId = null;
-const byId = () => (_byId || (_byId = new Map(ALL.map(s => [s.i, s]))));
+const byId = () => (_byId || (_byId = new Map(allStations.map(s => [s.i, s]))));
 function savedRows(){ const mm=metaMap(); return favList().map(id => byId().get(id) || mm[id]).filter(Boolean); }
 function renderSavedList(){
   const box=$("#savedList"); if(!box) return;
@@ -1410,7 +1851,8 @@ function matchAll(s,excl){
   if(!excl.q&&state.q){const hay=(s.n+" "+countryOf(s)+" "+(s.s||"")+" "+(s.l||"")+" "+(s.t||"")+" "+(s.x||"")).toLowerCase();if(!hay.includes(state.q))return false}
   return true }
 function buildStatic(){
-  $("#spinN").textContent=fmt(ALL.length);
+  refreshCustom();                                   // the user's own stations count on the loading screen too
+  $("#spinN").textContent=fmt(allStations.length);
   $("#selCountry").insertAdjacentHTML("beforeend",'<option value="">Country</option>');
   META.countries.forEach(c=>$("#selCountry").insertAdjacentHTML("beforeend",`<option value="${esc(c.cc)}">${flag(c.cc)} ${esc(c.c)} (${fmt(c.n)})</option>`));
   META.codecs.slice(0,12).forEach(x=>$("#selCodec").insertAdjacentHTML("beforeend",`<option value="${esc(x.x)}">${esc(x.x)} (${fmt(x.n)})</option>`));
@@ -1427,11 +1869,12 @@ function cardHTML(s,oi){
   const tags=tokens(s.t).slice(0,5); const extra=tokens(s.t).length-tags.length;
   const bit=s.x?(s.x+(s.b?" "+s.b+"kbps":"")):"";
   const loc=[countryOf(s),s.s].filter(Boolean).join(" · ");
+  const isCustom = s.i && s.i.startsWith("custom-");
   return `<div class="card">
    <div class="row1">${logoURL(s)?`<img class="fav" src="${esc(logoURL(s))}" alt="" loading="lazy">`:""}
      <div class="h1"><span class="nm" data-act="info" data-i="${oi}">${esc(s.n)}</span>
      <div class="loc">${flag(s.cc)} ${esc(loc)}${s.l?" · "+esc(s.l):""}</div></div>
-     <span class="icongrp"><button class="iconbtn star${favSet.has(s.i)?" on":""}" data-act="fav" data-i="${oi}" title="Save to ⭐ My stations">${favSet.has(s.i)?"★":"☆"}</button><button class="iconbtn" data-act="info" data-i="${oi}" title="Details">ⓘ</button></span></div>
+     <span class="icongrp"><button class="iconbtn star${favSet.has(s.i)?" on":""}" data-act="fav" data-i="${oi}" title="Save to ⭐ My stations">${favSet.has(s.i)?"★":"☆"}</button><button class="iconbtn" data-act="info" data-i="${oi}" title="Details">ⓘ</button>${isCustom?`<button class="iconbtn" data-act="delete" data-i="${oi}" title="Remove custom station">✕</button>`:""}</span></div>
    <div class="tags">${tags.map((t,i)=>`<span class="tag ${TAGCLS[i%5]}">${esc(t)}</span>`).join("")}${extra>0?`<span class="tag">+${extra}</span>`:""}</div>
    <div class="meta">${bit?`<span><b>${esc(bit)}</b>${s.hl?" · HLS":""}</span>`:""}<span>🔥 <b>${fmt(s.k)}</b></span><span>👍 <b>${fmt(s.v)}</b></span>${pk!==1?`<span class="kbadge" title="${esc(KIND_TEXT[pk].why)}">${KIND_TEXT[pk].tag}</span>`:""}</div>
    <div class="acts">
@@ -1453,21 +1896,24 @@ function showInfo(m){ const s=m, pk=playKind(s); const allTags=tokens(s.t);
     <a class="btn" href="${esc(s.u)}" target="_blank" rel="noopener">Open stream</a>
     ${s.hp?`<a class="btn" href="${esc(s.hp)}" target="_blank" rel="noopener">🌐 Station website</a>`:`<button class="btn" disabled>No website listed</button>`}
     <button class="btn" id="mCopy">Copy stream URL</button>
+    ${isCustom(s)?`<button class="btn" id="mDel" title="Remove this station from your list">🗑 Remove</button>`:""}
     <button class="btn" id="mClose">Close</button>`;
   $("#modal").style.display="flex";
   $("#mPlay").onclick=()=>{$("#modal").style.display="none";doPlay(s)};
   $("#mFav").onclick=()=>{ toggleFav(s); $("#mFav").textContent = favSet.has(s.i) ? "★ Saved" : "☆ Save"; };
   $("#mCopy").onclick=()=>copyText(s.u,"Stream URL");
+  const md=$("#mDel"); if(md) md.onclick=()=>{ $("#modal").style.display="none"; deleteCustomStation(s.i); };
   $("#mClose").onclick=()=>$("#modal").style.display="none"; }
 function doPlay(s){ const k = playKind(s);
   if(k !== 1){ unplayableNotice(s, k); return; }        // never start a stream this browser must fail on
   requestPlay(M(s)); }
 $("#modal").addEventListener("click",e=>{if(e.target===$("#modal"))$("#modal").style.display="none"});
 document.addEventListener("keydown",e=>{ const t=e.target, typing = t && (t.tagName==="INPUT"||t.tagName==="SELECT"||t.tagName==="TEXTAREA");
-  if(e.key==="Escape"){ $("#modal").style.display="none"; return; }
+  if(e.key==="Escape"){ if(addPanelOpen()){ closeAddPanel(); return; } $("#modal").style.display="none"; return; }
   if(typing || e.metaKey || e.ctrlKey || e.altKey) return;
   if(e.key==="/"){ e.preventDefault(); $("#q").focus(); }
   else if(e.key==="v"||e.key==="V"){ $("#btnViz").click(); }
+  else if(e.key==="a"||e.key==="A"){ openAddPanel(); }
   else if(e.key==="s"||e.key==="S"){ openMenu(menuOpen("saved") ? "" : "saved"); } });
 function pagerHTML(total){ const pages=Math.max(1,Math.ceil(total/PSZ)); if(state.page>pages)state.page=pages;
   const cur=state.page; const nums=[...new Set([1,pages,cur-1,cur,cur+1])].filter(p=>p>=1&&p<=pages).sort((a,b)=>a-b);
@@ -1494,8 +1940,15 @@ function bindPager(){ document.querySelectorAll(".pager").forEach(el=>{
     setTimeout(()=>{ if(Date.now()-(el.__turn||0)>300) turn(+b.dataset.p); }, 300); },{passive:true}) }) }
 function apply(){ const t0=performance.now();
   const cmpx={k:(a,b)=>b.k-a.k,v:(a,b)=>b.v-a.v,n:(a,b)=>a.n.localeCompare(b.n),b:(a,b)=>(b.b||0)-(a.b||0)||b.k-a.k}[state.sort]||((a,b)=>b.k-a.k);
-  const rows=[]; ALL.forEach((s,oi)=>{if(matchAll(s,{}))rows.push([s,oi])});
-  rows.sort((a,b)=>cmpx(a[0],b[0])); const total=rows.length;
+  const custom=refreshCustom();                      // catalogue + the user's own stations
+  const rows=[]; allStations.forEach((s,oi)=>{if(matchAll(s,{}))rows.push([s,oi])});
+  rows.sort((a,b)=>cmpx(a[0],b[0]));
+  /* Your own stations come first. A station that was just added carries no clicks and no votes, so
+     under every popularity sort it would land 40,000 rows down, on a page nobody ever reaches - and
+     an added station that cannot be found is not an added station. The sort is stable, so the order
+     WITHIN each group is still exactly what the sort control says. */
+  if(custom.length) rows.sort((a,b)=>(isCustom(b[0])?1:0)-(isCustom(a[0])?1:0));
+  const total=rows.length;
   const pages=Math.max(1,Math.ceil(total/PSZ)); if(state.page>pages)state.page=pages;
   const slice=rows.slice((state.page-1)*PSZ,state.page*PSZ);
   /* The count line is the number of stations the list is showing and nothing else - no page number,
@@ -1562,16 +2015,28 @@ $("#selCodec").onchange=e=>{state.codec=e.target.value;queueApply()};
 $("#selBit").onchange=e=>{state.bit=+e.target.value;queueApply()};
 $("#btnReset").onclick=()=>{Object.assign(state,{q:"",cc:"",lang:"",codec:"",bit:0,sort:"k",tags:[],page:1});
   $("#q").value="";$("#selCountry").value="";$("#selCodec").value="";$("#selBit").value="0";apply();writeHash()};
-$("#list").addEventListener("click",e=>{const b=e.target.closest("[data-act][data-i]");if(!b)return;const s=ALL[+b.dataset.i];const act=b.dataset.act;
+$("#list").addEventListener("click",e=>{const b=e.target.closest("[data-act][data-i]");if(!b)return;const idx=+b.dataset.i;const s=allStations[idx];const act=b.dataset.act;
   if(act==="play")doPlay(s);
   else if(act==="fav"){ toggleFav(s); b.classList.toggle("on",favSet.has(s.i)); b.textContent=favSet.has(s.i)?"★":"☆"; }
   else if(act==="copy")copyText(s.u,"Stream URL");
-  else if(act==="info")showInfo(s)});
+  else if(act==="info")showInfo(s);
+  else if(act==="delete"){ if(isCustom(s)) deleteCustomStation(s.i); }
+});
 buildStatic(); $("#spin").style.display="none"; readHash(); apply();
 channel.post({type:"hello"});
 /* debug hooks for automated tests */
 window.__dbg={ ALL:()=>ALL.length, state:()=>({...state}), player:()=>({cur:P.cur?P.cur.n:null,playing:P.playing,vol:P.vol,mine:P.mine}),
-  caps:()=>({...CAP}), playKind:(i)=>playKind(ALL[i]), unplayable:()=>unplayableCount(), playableCount:()=>ALL.length-unplayableCount(),
+  caps:()=>({...CAP}), playKind:(i)=>playKind(allStations[i]), unplayable:()=>unplayableCount(), playableCount:()=>allStations.length-unplayableCount(),
+  /* the add-a-station surface, for automated tests */
+  custom:()=>({ count:customStations().length, names:customStations().map(s=>s.n),
+    urls:customStations().map(s=>s.u),
+    panel:addPanelOpen(), status:(stStatus?stStatus.className+"|"+stStatus.textContent:"") , cards:document.querySelectorAll("#list .card .iconbtn[data-act='delete']").length,
+    first:(document.querySelector("#list .card .nm")||{}).textContent||null }),
+  addStation:(o)=>{ openAddPanel(); stEl("stName").value=o.n||""; stEl("stUrl").value=o.u||"";
+    stEl("stFormat").value=o.x||"auto"; stEl("stCountry").value=o.c||""; stEl("stCity").value=o.s||"";
+    stEl("stLang").value=o.l||""; stEl("stTags").value=o.t||""; stEl("stBit").value=o.b||"";
+    stEl("stHp").value=o.hp||""; liveCheck(); return stStatus?stStatus.textContent:""; },
+  saveStation:()=>saveCustomStation(), closeAdd:()=>closeAddPanel(), testStation:()=>testStream(),
   notice:()=>({shown:document.querySelector("#notice").classList.contains("show"), text:document.querySelector("#notice").textContent.slice(0,140)}),
   audioState:()=>({paused:audio.paused,src:!!audio.src,err:lastPlayErr,handover:handover,
     ready:audio.readyState, primed:primedFor, t:+audio.currentTime.toFixed(2)}),
