@@ -266,21 +266,33 @@ select:focus{border-color:var(--purp)}
 .empty{color:var(--mut);text-align:center;padding:44px 0;font-size:15px}
 a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
 
-/* player dock (bottom) */
-/* It sits ABOVE the bar rather than behind it: the bar is fixed across the same edge and is taller
-   than the dock's own 8px inset, so a dock pinned to the window's bottom had its lower third - the
-   volume slider's row and the footer - painted over by the bar. --barh is the bar's measured
-   height (syncBarSpace), and it is 0px while the bar is away. */
-#dock{position:fixed;bottom:var(--barh,0px);left:0;right:0;z-index:40;display:none}
-#dock .wrap-dock{display:flex;gap:0;align-items:stretch;justify-content:center;padding:8px 12px;pointer-events:none}
-#dock .dwin{pointer-events:auto;background:rgba(13,14,22,.96);border:2px solid var(--purp);border-bottom:none;border-radius:16px 16px 0 0;
-  box-shadow:0 -6px 30px rgba(0,0,0,.55);width:min(430px,100%);overflow:hidden}
-#dock .dwin .head{display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:default;background:linear-gradient(90deg,var(--purp),var(--pink))}
-#dock .dwin .head span{font-weight:900;font-size:11px;letter-spacing:1px;color:#fff;text-transform:uppercase;flex:1}
-#dock .dwin .head button{border:none;background:rgba(0,0,0,.3);color:#fff;border-radius:6px;padding:2px 8px;cursor:pointer;font-weight:800}
-#dock iframe{border:0;width:100%;height:480px;display:block}
-#dock.small iframe{height:330px}#dock.med iframe{height:480px}#dock.large iframe{height:620px}
-@media(max-width:560px){#dock .dwin{width:100%;border-radius:0}}
+/* player dock - a movable, resizable mini player window that takes the screen while it is up */
+/* While it is open the page stands down (body.player, see below): the player IS the screen. The
+   window is positioned with left/top/width/height in px by the dock code (the last box the user
+   chose is remembered), so it can be dragged by its title bar and resized from its corner. */
+#dock{position:fixed;inset:0;z-index:70;display:none}
+#dock .scrim{position:absolute;inset:0;background:rgba(6,7,12,.92)}
+#dock .dwin{position:absolute;display:flex;flex-direction:column;overflow:hidden;pointer-events:auto;
+  background:rgba(13,14,22,.98);border:2px solid var(--purp);border-radius:14px;
+  box-shadow:0 14px 48px rgba(0,0,0,.66)}
+#dock .dwin .head{flex:0 0 auto;display:flex;align-items:center;gap:6px;padding:5px 8px;
+  background:linear-gradient(90deg,var(--purp),var(--pink));cursor:move;touch-action:none;
+  user-select:none;-webkit-user-select:none}
+#dock .dwin .head span{font-weight:900;font-size:11px;letter-spacing:1px;color:#fff;text-transform:uppercase;
+  flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#dock .dwin .head button{border:none;background:rgba(0,0,0,.32);color:#fff;border-radius:6px;
+  padding:3px 8px;cursor:pointer;font-weight:800;font-size:12px;flex:0 0 auto}
+#dock .dwin .head button.on{background:#fff;color:#3a0a2c}
+#dock .dwin.full{border-radius:0;border-color:#0000}
+#dock iframe{border:0;width:100%;flex:1 1 auto;min-height:0;display:block;background:#101117}
+#dock .grip{position:absolute;right:0;bottom:0;width:24px;height:24px;z-index:2;cursor:nwse-resize;touch-action:none;
+  background:linear-gradient(135deg,transparent 44%,rgba(255,255,255,.45) 46%,rgba(255,255,255,.45) 54%,transparent 56%)}
+/* touch: the size buttons have to be reachable with a thumb */
+@media(hover:none){#dock .dwin .head button{min-width:38px;min-height:32px}}
+/* the page stands down: nothing of the site is behind the player while it is up.
+   !important because the bar is shown with an inline style (syncBarAway/setStation). */
+body.player .wrap,body.player #bar,body.player #toTop{display:none !important}
+body.player{overflow:hidden}
 
 /* bottom mini player bar */
 #bar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;align-items:center;gap:10px;
@@ -624,10 +636,11 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
 <div class="resbar" style="margin-top:14px"><span></span><span class="pager" id="pagerBottom"></span></div>
 </div>
 
-<div id="dock"><div class="wrap-dock"><div class="dwin">
-  <div class="head"><span>🎧 mini player</span><button id="dockS">S</button><button id="dockM">M</button><button id="dockL">L</button><button id="dockClose">✕</button></div>
+<div id="dock"><div class="scrim" id="dockScrim"></div><div class="dwin" id="dockWin">
+  <div class="head" id="dockHead"><span>🎧 mini player</span><button id="dockS" title="Small mini player">S</button><button id="dockM" title="Half the screen">M</button><button id="dockL" title="Full screen">L</button><button id="dockClose" title="Close the mini player and go back to the site">✕</button></div>
   <iframe id="dockFrame" title="mini player"></iframe>
-</div></div></div>
+  <div class="grip" id="dockGrip" title="Drag to resize the mini player"></div>
+</div></div>
 
 <div id="bar">
   <img class="art" id="bArt" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='80'%3E📻%3C/text%3E%3C/svg%3E">
@@ -1073,7 +1086,12 @@ function narrowBar(){ return !!(window.matchMedia && window.matchMedia("(max-wid
 function mobileBrowser(){
   const ua = navigator.userAgent || "";
   if(/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) return true;
-  return /Macintosh/.test(ua) && (navigator.maxTouchPoints||0) > 1;   // iPadOS reports itself as a Mac
+  if(/Macintosh/.test(ua) && (navigator.maxTouchPoints||0) > 1) return true;   // iPadOS reports itself as a Mac
+  /* A screen that only has a finger (no mouse at all) has no pop-up window either - and a tablet
+     switched to "desktop site" reports a desktop UA, which is how a tablet can still end up with
+     the player as a full-screen tab. */
+  try{ if(window.matchMedia && window.matchMedia("(hover:none) and (pointer:coarse)").matches) return true; }catch(e){}
+  return false;
 }
 $("#bArt").addEventListener("click",()=>togglePopOut());
 $("#bArt").addEventListener("keydown",e=>{
@@ -1092,8 +1110,63 @@ function syncBarSpace(){
   if(document.documentElement.style.getPropertyValue("--barh")!==now)
     document.documentElement.style.setProperty("--barh",now);
 }
-function dockShow(){ $("#dockFrame").src = "popout.html"; $("#dock").style.display="block"; dockOpen=true; syncPopAffordance(); }
-function dockHide(){ $("#dock").style.display="none"; try{ $("#dockFrame").src = "about:blank"; }catch(e){} dockOpen=false; syncPopAffordance(); }
+/* ---- the docked mini player: a window you can move, resize and size by hand --------------------
+   S is a small player, M is half the screen, L is the whole screen; the title bar drags it and the
+   corner grip resizes it, so every size in between is available as well. The box is remembered
+   between opens (px, plus which button produced it), and while the player is up the page stands
+   down (body.player) - the mini player IS the screen then, which is what a phone asked for. */
+const DOCK_MIN = { w: 240, h: 180 };
+let dockKind = ls.get("dock-kind", "small");            // small | med | large | free
+let dockState = null;                                   // the live box in px, or null = use the preset
+function clampDock(b){ const vw = window.innerWidth, vh = window.innerHeight;
+  const w = Math.max(DOCK_MIN.w, Math.min(Math.round(b.w), vw));
+  const h = Math.max(DOCK_MIN.h, Math.min(Math.round(b.h), vh));
+  /* a handhold always stays on screen: 96px of width and the whole title bar */
+  return { x: Math.max(-w + 96, Math.min(Math.round(b.x), vw - 96)),
+           y: Math.max(0, Math.min(Math.round(b.y), vh - 44)), w: w, h: h }; }
+function dockPreset(kind){ const vw = window.innerWidth, vh = window.innerHeight;
+  if(kind === "large") return { x:0, y:0, w:vw, h:vh };                       // full screen
+  if(kind === "med")   return { x:Math.round(vw*0.1), y:Math.round(vh*0.25),
+                                w:Math.round(vw*0.8), h:Math.round(vh*0.5) }; // half the screen
+  const w = Math.min(320, Math.round(vw*0.78)), h = Math.min(250, Math.round(vh*0.32));
+  return { x: Math.round((vw-w)/2), y: Math.max(8, vh-h-14), w:w, h:h }; }    // small
+function placeDock(){ const d=$("#dock"), w=$("#dockWin"); if(!d || !w || d.style.display === "none") return;
+  if(!dockState) dockState = dockPreset(dockKind);
+  dockState = clampDock(dockState);
+  w.style.left = dockState.x+"px"; w.style.top = dockState.y+"px";
+  w.style.width = dockState.w+"px"; w.style.height = dockState.h+"px";
+  w.classList.toggle("full", dockState.w >= window.innerWidth && dockState.h >= window.innerHeight);
+  [["small","#dockS"],["med","#dockM"],["large","#dockL"]].forEach(([k,sel]) => $(sel).classList.toggle("on", dockKind === k)); }
+function setDockSize(kind){ dockKind = kind; ls.set("dock-kind", kind); dockState = null;
+  placeDock(); ls.set("dock-box", dockState); syncBarSpace(); }
+function dockShow(){ $("#dockFrame").src = "popout.html"; $("#dock").style.display = "block";
+  dockState = (dockKind === "free" && ls.get("dock-box", null)) || null;
+  document.body.classList.add("player"); dockOpen = true; placeDock(); syncPopAffordance(); }
+function dockHide(){ $("#dock").style.display = "none"; try{ $("#dockFrame").src = "about:blank"; }catch(e){}
+  document.body.classList.remove("player"); dockOpen = false; syncBarSpace(); syncPopAffordance(); }
+window.addEventListener("resize", () => { if(dockOpen) placeDock(); });
+/* drag the title bar, resize from the corner - either one turns the size into "free" */
+function dockGesture(el, box){ el.addEventListener("pointerdown", e => {
+  if(e.target && e.target.closest && e.target.closest("button")) return;   // S/M/L/✕ keep their clicks
+  const b = dockState || dockPreset(dockKind);
+  const from = { px:e.clientX, py:e.clientY, x:b.x, y:b.y, w:b.w, h:b.h };
+  const move = ev => { dockState = clampDock(box(from, ev)); dockKind = "free"; placeDock(); };
+  const up = () => { el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up);
+    el.removeEventListener("pointercancel", up); ls.set("dock-kind", dockKind); ls.set("dock-box", dockState);
+    placeDock(); };
+  el.addEventListener("pointermove", move); el.addEventListener("pointerup", up);
+  el.addEventListener("pointercancel", up);
+  try{ el.setPointerCapture(e.pointerId); }catch(err){}
+  e.preventDefault(); }, { passive:false }); }
+dockGesture($("#dockHead"), (f, ev) => ({ x:f.x + (ev.clientX-f.px), y:f.y + (ev.clientY-f.py), w:f.w, h:f.h }));
+dockGesture($("#dockGrip"), (f, ev) => ({ x:f.x, y:f.y, w:f.w + (ev.clientX-f.px), h:f.h + (ev.clientY-f.py) }));
+/* two more ways out of it, both of them what a phone already expects: a tap on the backdrop, and
+   Escape. A pull-down's own Escape still wins - it is the thing the user opened last. */
+$("#dockScrim").addEventListener("click",dockHide);
+document.addEventListener("keydown", e => {
+  if(e.key !== "Escape" || !dockOpen) return;
+  try{ if(menuName) return; }catch(err){}
+  dockHide(); });
 function togglePopOut(){
   if(winPop && !winPop.closed){ try{ winPop.close(); }catch(e){} winPop=null; syncPopAffordance();
     toast("Pop-out hidden — playback continues on this page."); return; }
@@ -1135,11 +1208,11 @@ window.addEventListener("message",e=>{ if(e.data==="rbg-pop-closed"){
   /* the mini player has left - a window closed, or a docked one asked to fold away. Either way the
      cover picture goes back to offering the pop-out, and the dock goes with it. */
   winPop=null; if(dockOpen) dockHide(); syncPopAffordance(); } });
-/* dock controls */
+/* dock controls: S / M / L set the size, ✕ closes it and hands the page back */
 $("#dockClose").addEventListener("click",dockHide);
-$("#dockS").onclick=()=>{const d=$("#dock");d.classList.remove("med","large");d.classList.add("small")};
-$("#dockM").onclick=()=>{const d=$("#dock");d.classList.remove("small","large");d.classList.add("med")};
-$("#dockL").onclick=()=>{const d=$("#dock");d.classList.remove("small","med");d.classList.add("large")};
+$("#dockS").addEventListener("click",()=>setDockSize("small"));
+$("#dockM").addEventListener("click",()=>setDockSize("med"));
+$("#dockL").addEventListener("click",()=>setDockSize("large"));
 /* ===== collapsible interface: sections, panel, header, back-to-top, shortcuts ===== */
 /* ===== the Saved pull-down (the only one left: the genre panel is folded into the search field) =====
    It floats over the list (see .menu), so opening it never pushes a card down. It closes on Escape
@@ -1503,6 +1576,9 @@ window.__dbg={ ALL:()=>ALL.length, state:()=>({...state}), player:()=>({cur:P.cu
   audioState:()=>({paused:audio.paused,src:!!audio.src,err:lastPlayErr,handover:handover,
     ready:audio.readyState, primed:primedFor, t:+audio.currentTime.toFixed(2)}),
   playFirst:()=>doPlay(ALL[0]), stop:()=>requestStop(), openPop:togglePopOut, popOpen:()=>popOutOpen(),
+  dock:()=>({ open:dockOpen, kind:dockKind, box:dockState,
+              pageHidden:document.body.classList.contains("player"),
+              shown:getComputedStyle(document.getElementById("dock")).display !== "none" }),
   randBtn:()=>$("#btnRandom").textContent.trim(),
   pickRandom:()=>$("#btnRandom").click(),
   curKind:()=>P.cur?playKind(P.cur):null,
