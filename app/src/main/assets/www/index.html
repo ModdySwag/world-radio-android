@@ -67,36 +67,44 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
   #selCountry{flex:1 1 96px}
   .toolbar .btn{padding:8px 10px;font-size:12.5px;white-space:nowrap}
 }
-/* Narrowest phones: the toolbar now carries three controls where the old filter panel carried one,
-   so the labels give up their carets and a little padding before anything else. Nothing here may
-   be wider than the row - a toolbar wider than the screen is what zooms a phone page out. */
+/* Narrowest phones: the labels give up their carets and a little padding, and the search field
+   takes the first line beside the country select so the whole set of controls lands in THREE
+   rows instead of four (field + country / the other three selects / the buttons). Nothing here
+   may be wider than the row - a toolbar wider than the screen zooms a phone page out. */
 @media(max-width:430px){
   .cv{display:none}
   .tbacts{gap:5px}
   .tbacts .btn{padding:8px 8px;font-size:12px}
   #btnPlayable{padding:7px 8px 7px 7px}
+  /* .toolbar #q, not just #q: the base rule for the field comes later in this sheet, so the phone
+     override has to out-specify it to win. */
+  .toolbar #q{flex:1 1 190px;min-width:180px}
+  .toolbar select{max-width:104px}
+  #selCountry{max-width:118px}
 }
-/* Scrolling is reading time: the toolbar and everything in it - the search field, the selects and
-   the two pull-downs - gets out of the way so more of the list fits. Either direction counts - up
-   hides it just like down - and it only returns once the page has been still for a moment, then
-   slides back in slowly instead of snapping back. The pull-downs ride inside the toolbar, so they
-   travel with it and there is nothing separate to fade.
-   Phone and tablet only - on a desktop the toolbar shares a line with the search field and there
-   is nothing to win. */
+/* 360px phones and narrower: tighten the buttons the last little bit so the four of them still
+   fit one line instead of spilling Reset onto a row of its own. */
+@media(max-width:380px){
+  .tbacts{gap:4px}
+  .tbacts .btn{padding:8px 7px;font-size:11.5px}
+  #btnPlayable{padding:7px 7px 7px 6px}
+}
+/* Scrolling is reading time. Whatever the page is doing, the bar gets out of the way by sliding
+   off to the LEFT, and what comes back 1.5s after the page stops is the SEARCH FIELD ONLY - the
+   selects, the pull-downs and Reset are for the top of the page, where the whole toolbar sits in
+   its normal place. No fades: one plain slide, in and out.
+   Phone and tablet only - a desktop has the room and keeps its toolbar throughout. */
 @media(max-width:900px){
-  /* The transition that runs is the one on the state being entered, so the return lives on the
-     resting state and the way out lives on body.scrolling. */
-  /* Coming back: the bar slides down into place and, in the same move, comes up from about half
-     visible to fully solid. The opacity curve is deliberately front-loaded - half way there in
-     roughly the first tenth of the time - so it arrives at 50% and then takes its time settling,
-     instead of growing out of nothing. The travel is slow and even, like a blind being lowered:
-     most of the distance is covered early and the last of it eases into place. */
-  .toolbar{transition:transform 1.4s cubic-bezier(.22,.61,.36,1),
-                      opacity 1.4s cubic-bezier(.12,.55,.35,1)}
-  /* Going away: a slow, even glide up - slower and softer than it used to be, but never so slow
-     that it is still on screen once you have started reading the list. */
-  body.scrolling .toolbar{transition:transform .55s cubic-bezier(.45,.05,.35,1),opacity .55s cubic-bezier(.4,0,.6,1);
-    transform:translateY(-130%);opacity:0;pointer-events:none}
+  .toolbar{transition:transform .45s ease}
+  body.scrolling .toolbar{transform:translateX(-115%);pointer-events:none}
+  /* The quick bar: pinned at the top carrying the search field and nothing else. The other
+     controls leave the flow but the box keeps their height (--tbh, measured in JS), so nothing
+     below the toolbar jumps when the state changes; the box is transparent and passes touches
+     through, so the list keeps scrolling under it. */
+  body.quick:not(.scrolling) .toolbar{min-height:var(--tbh,0px);background:none;pointer-events:none}
+  body.quick:not(.scrolling) .toolbar select,
+  body.quick:not(.scrolling) .toolbar .tbacts{position:absolute;top:0;left:0;visibility:hidden;pointer-events:none}
+  body.quick:not(.scrolling) #q{flex:1 1 100%;pointer-events:auto}
 }
 @media (prefers-reduced-motion:reduce){
   .toolbar,body.scrolling .toolbar,#btnPlayable .sw,#btnPlayable .sw::after{transition:none}
@@ -547,10 +555,10 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
     <option value="n">Name A–Z</option><option value="b">Bitrate</option>
   </select>
   <div class="tbacts">
-    <button class="btn" id="btnReset">Reset</button>
     <button class="btn" id="btnGenre" aria-expanded="false" aria-controls="genreMenu" title="Pick genres to listen to (shortcut: g)">🏷 Genre <span class="cv">▾</span></button>
     <button class="btn" id="btnSaved" aria-expanded="false" aria-controls="savedMenu" title="Your saved stations (shortcut: s)">⭐ Saved <span id="favCount"></span><span class="cv">▾</span></button>
     <button class="btn" id="btnPlayable" aria-pressed="true" title="Only list stations this browser can actually play"><span class="sw" aria-hidden="true"></span>Plays here</button>
+    <button class="btn" id="btnReset" title="Clear the search and every filter">Reset</button>
   </div>
 
   <!-- The two pull-downs live inside the toolbar so they ride with it: open, they float over the
@@ -1065,24 +1073,36 @@ ls.set("hdr-compact", false);
 $("#hdrHead").classList.remove("compact");
 $("#toTop").addEventListener("click", () => window.scrollTo({ top:0, behavior:"smooth" }));
 window.addEventListener("scroll", () => $("#toTop").classList.toggle("show", window.scrollY > 600), { passive:true });
-/* Type into the search field and the page moves a little by itself (the keyboard, the list
-   re-rendering). That is not reading time, so the chrome stays put while the field has focus.
-   Scrolling either way hides it - on a phone or tablet you are reading, not hunting for the
-   search box, and going back up is only looking for it once you have actually arrived. It comes
-   back after the page has been still for CHROME_STILL_MS, and the CSS brings it the rest of the
-   way - a slow slide with the opacity coming up from about half visible to solid. */
+/* Scrolling is reading time. The bar slides off to the LEFT, and 1.5s after the page stops it
+   comes back from the left carrying the SEARCH FIELD ONLY (body.quick); the selects, the two
+   pull-downs and Reset belong to the top of the page, where the whole toolbar sits in its own
+   place. Where "the top" ends is the toolbar's place in the document, measured rather than
+   guessed - the header above it is a different height on every screen. */
 const CHROME_STILL_MS = 1500;     // stillness after the finger leaves the glass before it returns
-let hideTimer=null, lastScrollY=0;
+let hideTimer=null, lastScrollY=0, toolbarTop=0;
+function measureChrome(){ const tb=$(".toolbar"); if(!tb) return;
+  let top=0, el=tb; while(el){ top+=el.offsetTop; el=el.offsetParent; }
+  toolbarTop = top - 6;       // -6 is the toolbar's sticky offset: it pins at this scroll
+  /* --tbh is the space the quick bar has to keep, which is the FULL toolbar's height. Measure it
+     with the quick state off and put the state back in the same frame, so nothing flickers. */
+  const quick = document.body.classList.contains("quick");
+  if(quick) document.body.classList.remove("quick");
+  document.documentElement.style.setProperty("--tbh", tb.offsetHeight + "px");
+  if(quick) document.body.classList.add("quick"); }
+measureChrome();
+window.addEventListener("resize", measureChrome);
+window.addEventListener("load", measureChrome);
 window.addEventListener("scroll", () => {
   const y = window.scrollY;
-  const moved = Math.abs(y - lastScrollY) > 4;                 // up counts now, not only down
+  const moved = Math.abs(y - lastScrollY) > 4;                 // up counts too, not only down
   lastScrollY = y;
   const reveal = () => { clearTimeout(hideTimer); document.body.classList.remove("scrolling"); };
-  if(window.innerWidth > 900) return reveal();                 // desktop keeps it
+  if(window.innerWidth > 900) return reveal();                 // a desktop keeps its toolbar
   if(!moved) return;                                           // a scroll event that went nowhere
-  if(y < 30) return reveal();                                  // the top: nothing to win, so show it
+  if(y <= toolbarTop){ document.body.classList.remove("quick"); return reveal(); }   // the top: all of it
   if(document.activeElement === $("#q")) return reveal();      // typing moves the page by itself
   if(menuName) openMenu("");                                   // a menu must not ride off with the gesture
+  document.body.classList.add("quick");                        // what comes back is the search field
   if(!document.body.classList.contains("scrolling")) document.body.classList.add("scrolling");
   clearTimeout(hideTimer);
   hideTimer = setTimeout(() => document.body.classList.remove("scrolling"), CHROME_STILL_MS);
