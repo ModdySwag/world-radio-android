@@ -42,8 +42,9 @@ corner grip, and its controls stay reachable at the smallest one.
 - the downloads suite: 84 checks, 0 failed, and 28 more against the live feed, the file it points
   at, and the sha256 of what the host really serves
 - the bundled `index.html` is byte-identical to the one this release puts on the site
+  (sha256 `38b1b8b41ba29259…`, read out of the published APK, not off a build log)
 - `tools/apk_identity.py` on the published APK: versionName `1.6.9`, versionCode 17, no `.debug`
-  suffix, the same signing certificate as every release before it
+  suffix, the same signing certificate as every release before it: 27 checks, 0 failed
 
 ## Install
 
