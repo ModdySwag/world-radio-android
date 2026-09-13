@@ -254,8 +254,10 @@ def run_platform(page, name, global_name, setup, device, headed):
     # arrows also listen for a touch that never became one. Both routes are exercised here, and
     # the guard that stops a real tap counting twice.
     def page_number():
-        return page.evaluate("() => { const m = document.querySelector('#cntLine').textContent"
-                             ".match(/page\\s+(\\d+)/); return m ? +m[1] : -1; }")
+        # The count line is only the count now ("34,206 stations") - the page number lives in the
+        # pager itself, on the chip of the page you are on.
+        return page.evaluate("() => { const el = document.querySelector('#pagerTop .pgno');"
+                             " return el ? +el.textContent.trim() : -1; }")
 
     page.evaluate("() => window.scrollTo({ top: 0 })")
     start = page_number()
