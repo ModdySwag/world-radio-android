@@ -67,9 +67,20 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
   #selCountry{flex:1 1 96px}
   .toolbar .btn{padding:8px 10px;font-size:12.5px;white-space:nowrap}
 }
-/* Scrolling is reading time: the toolbar and the filter panel get out of the way so more of the
-   list fits. Either direction counts - up hides it just like down - and it only returns once the
-   page has been still for a moment, then fades in slowly instead of snapping back.
+/* Narrowest phones: the toolbar now carries three controls where the old filter panel carried one,
+   so the labels give up their carets and a little padding before anything else. Nothing here may
+   be wider than the row - a toolbar wider than the screen is what zooms a phone page out. */
+@media(max-width:430px){
+  .cv{display:none}
+  .tbacts{gap:5px}
+  .tbacts .btn{padding:8px 8px;font-size:12px}
+  #btnPlayable{padding:7px 8px 7px 7px}
+}
+/* Scrolling is reading time: the toolbar and everything in it - the search field, the selects and
+   the two pull-downs - gets out of the way so more of the list fits. Either direction counts - up
+   hides it just like down - and it only returns once the page has been still for a moment, then
+   slides back in slowly instead of snapping back. The pull-downs ride inside the toolbar, so they
+   travel with it and there is nothing separate to fade.
    Phone and tablet only - on a desktop the toolbar shares a line with the search field and there
    is nothing to win. */
 @media(max-width:900px){
@@ -78,18 +89,17 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
   /* Coming back: the bar slides down into place and, in the same move, comes up from about half
      visible to fully solid. The opacity curve is deliberately front-loaded - half way there in
      roughly the first tenth of the time - so it arrives at 50% and then takes its time settling,
-     instead of growing out of nothing. */
-  .toolbar{transition:transform .95s cubic-bezier(.22,.61,.36,1),
-                      opacity .95s cubic-bezier(.12,.55,.35,1)}
-  .facets{transition:opacity .95s cubic-bezier(.12,.55,.35,1)}
+     instead of growing out of nothing. The travel is slow and even, like a blind being lowered:
+     most of the distance is covered early and the last of it eases into place. */
+  .toolbar{transition:transform 1.4s cubic-bezier(.22,.61,.36,1),
+                      opacity 1.4s cubic-bezier(.12,.55,.35,1)}
   /* Going away: a slow, even glide up - slower and softer than it used to be, but never so slow
      that it is still on screen once you have started reading the list. */
   body.scrolling .toolbar{transition:transform .55s cubic-bezier(.45,.05,.35,1),opacity .55s cubic-bezier(.4,0,.6,1);
     transform:translateY(-130%);opacity:0;pointer-events:none}
-  body.scrolling .facets{transition:opacity .55s cubic-bezier(.4,0,.6,1);opacity:0;pointer-events:none}
 }
 @media (prefers-reduced-motion:reduce){
-  .toolbar,.facets,body.scrolling .toolbar,body.scrolling .facets{transition:none}
+  .toolbar,body.scrolling .toolbar,#btnPlayable .sw,#btnPlayable .sw::after{transition:none}
 }
 @media(max-width:365px){
   header .spraytag{font-size:8.5px;letter-spacing:.2px;padding:4px 7px}
@@ -104,27 +114,56 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
 #q:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(31,227,255,.18)}
 select{background:#0d0e16;border:2px solid var(--line);color:var(--tx);border-radius:10px;padding:8px 9px;font-size:13.5px;outline:none;max-width:220px}
 select:focus{border-color:var(--purp)}
-/* Reset and Filters are one pair: wrapped together they can never be split across two lines,
-   which is what used to cost a line of the toolbar on a phone. */
-.tbacts{display:flex;gap:6px;align-items:center}
+/* Reset, Genre, Saved and plays-here are one group: they stay together on one line unless the row
+   is genuinely too narrow for them, in which case they wrap inside the group rather than squeezing
+   their labels or pushing the row wider than the screen. */
+.tbacts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+/* 44px tall: these are finger targets on a phone, and the toolbar is where a mis-tap costs you
+   the thing you were reading. */
+.tbacts .btn{min-height:44px}
 .btn{appearance:none;border:2px solid var(--line);background:#10111c;color:var(--tx);border-radius:10px;padding:8px 13px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
   transition:transform .08s,box-shadow .08s,background .12s,border-color .12s}
 .btn:hover{border-color:var(--cyan);box-shadow:3px 3px 0 rgba(31,227,255,.35);transform:translate(-1px,-1px)}
 .btn:active{transform:translate(1px,1px);box-shadow:none}
 .btn.pink{border-color:var(--pink);color:#ffd3ea}.btn.pink:hover{background:var(--pink);color:#1a0312;box-shadow:3px 3px 0 rgba(255,62,165,.4)}
-.facets{background:rgba(24,25,40,.85);border:1px solid var(--line);border-radius:16px 8px 16px 8px;padding:12px 14px;margin:2px 0 14px}
+/* The toolbar's two pull-downs (Genre, Saved). They FLOAT over the list: opening one must not
+   push a single result down the page, which is what the in-flow filter panel used to do. */
+.menu{position:absolute;top:100%;right:0;z-index:60;width:min(540px,calc(100vw - 26px));
+  max-height:min(64vh,460px);overflow:auto;-webkit-overflow-scrolling:touch;
+  background:rgba(15,16,24,.985);border:1px solid var(--line);border-radius:14px 6px 14px 6px;
+  padding:10px 12px;box-shadow:0 22px 46px rgba(0,0,0,.62)}
+.mrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.mrow+.mrow{margin-top:8px}
+.mttl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px;color:var(--mut);
+  font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px}
+.mttl b{color:var(--tx);font-size:14px;letter-spacing:0;text-transform:none}
+.mttl span{text-transform:none;letter-spacing:.2px}
+.mfoot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);
+  margin-top:9px;padding-top:8px}
 .frow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .frow .lbl{color:var(--mut);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;width:64px;flex:0 0 auto}
 .ftag{border:2px dashed rgba(255,255,255,.28);background:rgba(20,21,36,.85);color:#e6e9ff;border-radius:6px 14px 6px 14px;padding:3px 11px;font-size:12.5px;cursor:pointer;user-select:none;font-weight:600;transition:all .1s}
 .ftag:hover{border-style:solid;border-color:var(--cyan);transform:rotate(-1deg)}
 .ftag.on{background:var(--pink);border:2px solid var(--pink);color:#fff;box-shadow:2px 2px 0 rgba(0,0,0,.4);border-radius:14px 6px 14px 6px}
 .ftag .n{opacity:.75;margin-left:5px;font-size:11px}
-#popRow.collapsed,.frow.sec-hidden,.frow.sec-empty,#facets.hidden{display:none}
-/* (the small "compact" header was removed: the header is always the full-size one) */
-.fhead{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
-.fsec{font-weight:800;letter-spacing:.3px}
-.fsec.off{border-style:dashed;opacity:.7}
-.factive{display:flex;gap:4px;flex-wrap:wrap;margin-left:auto}
+.menu[hidden],.chiprow[hidden],.frow.sec-empty{display:none}
+/* Active filters: one slim line under the toolbar, there only while something is filtered. The
+   toolbar itself keeps its height, and this line scrolls away with the results. */
+.chiprow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:10px 0 0}
+.chips{display:flex;gap:4px;flex-wrap:wrap}
+/* My stations, listed inside the Saved pull-down */
+.slist{display:flex;flex-direction:column;gap:6px}
+.sempty{color:var(--mut);font-size:12.5px;line-height:1.6;padding:2px 2px 4px}
+.srow{display:flex;gap:9px;align-items:center;border:1px solid rgba(255,255,255,.12);
+  border-radius:10px;padding:7px 9px;background:rgba(24,25,40,.55)}
+.srow img{width:34px;height:34px;border-radius:9px 3px 9px 3px;object-fit:cover;background:#0b0c12;flex:0 0 auto}
+.srow .sn{min-width:0;flex:1}
+.srow .sn b{display:block;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.srow .sn b:hover{color:var(--cyan)}
+.srow .sn span{display:block;font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srow .sb{border:2px solid var(--line);background:#10111c;color:var(--tx);border-radius:9px;
+  min-width:44px;min-height:42px;font-size:14px;font-weight:800;cursor:pointer;flex:0 0 auto}
+.srow .sb:hover{border-color:var(--cyan)}
 .fchip{border:2px solid var(--purp);background:rgba(160,107,255,.14);color:#e2d6ff;border-radius:6px 14px 6px 14px;padding:2px 9px;font-size:12px;font-weight:700;cursor:pointer}
 .fchip:hover{background:var(--purp);color:#fff}
 .fclear{border:2px solid var(--warn);background:rgba(255,159,28,.12);color:#ffd9a3;border-radius:6px 14px 6px 14px;padding:2px 10px;font-size:12px;font-weight:800;cursor:pointer}
@@ -166,8 +205,17 @@ select:focus{border-color:var(--purp)}
 .icongrp{margin-left:auto;display:flex;gap:4px;align-items:center;flex:0 0 auto}
 .iconbtn.star{color:var(--mut)}
 .iconbtn.star.on{color:#151605;background:var(--yel);border-color:var(--yel)}
-#btnFav.on{background:var(--yel);border:2px solid var(--yel);color:#151605;border-radius:14px 6px 14px 6px}
-#btnLocal.on{background:var(--cyan);border:2px solid var(--cyan);color:#04161a;border-radius:14px 6px 14px 6px}
+/* "Plays here" is a setting, not an action, so it is drawn as a switch in a button-sized hit box.
+   On = the list only holds stations this browser can really play (the default). */
+#btnPlayable{gap:7px;padding:6px 11px 6px 9px}
+#btnPlayable .sw{position:relative;flex:0 0 auto;width:26px;height:15px;border-radius:9px;
+  background:rgba(255,255,255,.2);border:1px solid var(--line);transition:background .16s,border-color .16s}
+#btnPlayable .sw::after{content:"";position:absolute;top:1px;left:1px;width:11px;height:11px;border-radius:50%;
+  background:#c9ccdd;transition:transform .16s,background .16s}
+#btnPlayable.on{background:var(--cyan);border-color:var(--cyan);color:#04161a}
+#btnPlayable.on .sw{background:rgba(4,22,26,.35);border-color:rgba(4,22,26,.35)}
+#btnPlayable.on .sw::after{transform:translateX(11px);background:#fff}
+.btn.on{border-color:var(--cyan);border-radius:14px 6px 14px 6px}
 .play{background:rgba(255,62,165,.14);border-color:var(--pink);color:#ff9fd2}
 .play:hover{background:var(--pink);color:#1a0312;box-shadow:3px 3px 0 rgba(255,62,165,.4)}
 .play.on{background:var(--pink);border-color:#fff;color:#fff;animation:blink 1.1s steps(2) infinite}
@@ -500,25 +548,31 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
   </select>
   <div class="tbacts">
     <button class="btn" id="btnReset">Reset</button>
-    <button class="btn" id="btnFacets" aria-expanded="false" title="Show / hide the filter panel (shortcut: f)">🧰 Filters ▾</button>
+    <button class="btn" id="btnGenre" aria-expanded="false" aria-controls="genreMenu" title="Pick genres to listen to (shortcut: g)">🏷 Genre <span class="cv">▾</span></button>
+    <button class="btn" id="btnSaved" aria-expanded="false" aria-controls="savedMenu" title="Your saved stations (shortcut: s)">⭐ Saved <span id="favCount"></span><span class="cv">▾</span></button>
+    <button class="btn" id="btnPlayable" aria-pressed="true" title="Only list stations this browser can actually play"><span class="sw" aria-hidden="true"></span>Plays here</button>
+  </div>
+
+  <!-- The two pull-downs live inside the toolbar so they ride with it: open, they float over the
+       list (nothing moves), and the scroll-away gesture takes them along. -->
+  <div class="menu" id="genreMenu" hidden>
+    <div class="mttl"><b>Pick a genre</b><span id="genreCount"></span></div>
+    <div class="frow" id="tagRow"></div>
+    <div class="frow" id="langRow"></div>
+    <div class="mfoot">
+      <span style="color:var(--mut);font-size:12px">Genres add up: pick two and you get stations tagged with both.</span>
+    </div>
+  </div>
+
+  <div class="menu" id="savedMenu" hidden>
+    <div class="mttl"><b>⭐ My stations</b><span id="favHead"></span>
+      <button class="ftag" id="btnSavedOnly" aria-pressed="false" title="Show only your saved stations in the list">only these</button>
+    </div>
+    <div class="slist" id="savedList"></div>
   </div>
 </div>
 
-<div class="facets" id="facets">
-  <div class="fhead">
-    <button class="ftag fsec" data-sec="country" aria-expanded="true">▾ Country</button>
-    <button class="ftag fsec" data-sec="genre" aria-expanded="true">▾ Genre</button>
-    <button class="ftag fsec" data-sec="lang" aria-expanded="true">▾ Language</button>
-    <button class="ftag" id="btnFav" title="Show only your saved stations (shortcut: s)">⭐ Saved</button>
-    <button class="ftag" id="btnPlayable" title="Only list stations this browser can actually play — HLS, playlist files and http-only streams are hidden">✅ Plays here</button>
-    <button class="ftag" id="btnLocal" hidden title="Filter to stations from your country">📍 Local</button>
-    <span class="factive" id="fActive"></span>
-    <button class="fclear" id="btnClearF" hidden title="Remove every active filter">Clear filters ✕</button>
-  </div>
-  <div class="frow" id="popRow"></div>
-  <div class="frow" id="tagRow" style="margin-top:8px"></div>
-  <div class="frow sec-empty" id="langRow" style="margin-top:8px"></div>
-</div>
+<div class="chiprow" id="chipRow" hidden><span class="chips" id="fActive"></span><button class="fclear" id="btnClearF" title="Remove every active filter">Clear filters ✕</button></div>
 
 <div class="resbar"><span id="cntLine">…</span><span class="pager" id="pagerTop"></span></div>
 <div class="grid" id="list"></div>
@@ -976,27 +1030,34 @@ $("#dockS").onclick=()=>{const d=$("#dock");d.classList.remove("med","large");d.
 $("#dockM").onclick=()=>{const d=$("#dock");d.classList.remove("small","large");d.classList.add("med")};
 $("#dockL").onclick=()=>{const d=$("#dock");d.classList.remove("small","med");d.classList.add("large")};
 /* ===== collapsible interface: sections, panel, header, back-to-top, shortcuts ===== */
-const SEC_ROWS = { country:"#popRow", genre:"#tagRow", lang:"#langRow" };
-const SEC_LABEL = { country:"Country", genre:"Genre", lang:"Language" };
-const secHidden = { country: ls.get("fil-country", ls.get("ctryHidden", false)),
-                    genre:   ls.get("fil-genre", false),
-                    lang:    ls.get("fil-lang", false) };
-function applySection(sec){ const row=$(SEC_ROWS[sec]); if(row) row.classList.toggle("sec-hidden", !!secHidden[sec]);
-  const b=document.querySelector('.fsec[data-sec="'+sec+'"]');
-  if(b){ b.classList.toggle("off", !!secHidden[sec]); b.setAttribute("aria-expanded", String(!secHidden[sec]));
-    b.textContent = (secHidden[sec]?"▸ ":"▾ ")+SEC_LABEL[sec]; } }
-["country","genre","lang"].forEach(applySection);
-document.querySelectorAll(".fsec").forEach(b => b.addEventListener("click", () => {
-  const s=b.dataset.sec; secHidden[s]=!secHidden[s]; ls.set("fil-"+s, secHidden[s]); applySection(s); }));
-/* Starts CLOSED on every load: the filter panel is a tool you open when you want it, not
-   furniture standing above the station list. Opening it still toggles and is remembered under
-   the same key, but a fresh load always begins tidy. */
-let facHidden = true;
-function applyFacets(){ $("#facets").classList.toggle("hidden", !!facHidden);
-  const b=$("#btnFacets"); b.classList.toggle("on", !facHidden); b.setAttribute("aria-expanded", String(!facHidden));
-  b.textContent = facHidden ? "🧰 Filters ▸" : "🧰 Filters ▾"; }
-applyFacets();
-$("#btnFacets").addEventListener("click", () => { facHidden=!facHidden; ls.set("fil-panel", facHidden); applyFacets(); });
+/* ===== the two toolbar pull-downs: Genre and Saved =====
+   Both float over the list (see .menu), so opening one never pushes a card down. Each closes on
+   Escape, on a click outside, and at the moment the toolbar is carried off by a scroll: a menu
+   riding off the top of the screen with the gesture that opened it helps nobody. */
+const MENUS = { genre:["#btnGenre","#genreMenu"], saved:["#btnSaved","#savedMenu"] };
+let menuName = "";
+const menuOpen = name => !!(name && !$(MENUS[name][1]).hidden);
+function openMenu(name){
+  name = name || "";
+  Object.keys(MENUS).forEach(k => { const b=$(MENUS[k][0]), panel=$(MENUS[k][1]);
+    const on = (k === name); panel.hidden = !on;
+    b.classList.toggle("on", on); b.setAttribute("aria-expanded", String(on)); });
+  menuName = name;
+  if(name === "genre"){ renderTagRow(); renderLangRow(); }
+  if(name === "saved") renderSavedList();
+}
+Object.keys(MENUS).forEach(k => $(MENUS[k][0]).addEventListener("click", e => {
+  e.stopPropagation(); openMenu(menuOpen(k) ? "" : k); }));
+/* Reading the click's PATH rather than its target: a chip press re-renders the menu under the
+   finger, which detaches the element the click came from, and a detached target matches nothing -
+   the menu would shut the moment you used it. */
+document.addEventListener("click", e => {
+  const path = (e.composedPath && e.composedPath()) || [];
+  const inside = path.some(n => n.classList && (n.classList.contains("menu") || n.classList.contains("tbacts")));
+  if(menuName && !inside) openMenu("");
+});
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape" && menuName){ const b=$(MENUS[menuName][0]); openMenu(""); b.focus(); } });
 /* The header no longer collapses. It is always shown at its full size, and the compact state
    is unreachable from anywhere - no button, no shortcut - so any value an older version left
    in storage is cleared here rather than trusted. */
@@ -1021,11 +1082,12 @@ window.addEventListener("scroll", () => {
   if(!moved) return;                                           // a scroll event that went nowhere
   if(y < 30) return reveal();                                  // the top: nothing to win, so show it
   if(document.activeElement === $("#q")) return reveal();      // typing moves the page by itself
+  if(menuName) openMenu("");                                   // a menu must not ride off with the gesture
   if(!document.body.classList.contains("scrolling")) document.body.classList.add("scrolling");
   clearTimeout(hideTimer);
   hideTimer = setTimeout(() => document.body.classList.remove("scrolling"), CHROME_STILL_MS);
 }, { passive:true });
-/* active-filter chips: see and remove any filter from one place */
+/* active-filter chips: see and remove any filter from one place, on one line under the toolbar */
 function renderActiveFilters(){
   const parts=[];
   if(state.cc) parts.push(["c", (ccName[state.cc]||state.cc), flag(state.cc)]);
@@ -1034,14 +1096,15 @@ function renderActiveFilters(){
   if(state.codec) parts.push(["x", state.codec, "🎚"]);
   if(state.bit) parts.push(["b", "≥"+state.bit+"k", "◍"]);
   if(state.q) parts.push(["q", "“"+state.q+"”", "🔎"]);
-  $("#btnClearF").hidden = !parts.length;
   $("#fActive").innerHTML = parts.map(([k,v,ic]) =>
     '<button class="fchip" data-fk="'+k+'" data-fv="'+esc(v)+'" title="Remove this filter">'+ic+" "+esc(v)+" ✕</button>").join("");
+  $("#chipRow").hidden = !parts.length;
+  $("#btnClearF").hidden = !parts.length;
 }
 $("#fActive").addEventListener("click", e => {
   const b=e.target.closest(".fchip"); if(!b) return;
   const k=b.dataset.fk, v=b.dataset.fv;
-  if(k==="c"){ state.cc=""; $("#selCountry").value=""; syncPop(); }
+  if(k==="c"){ state.cc=""; $("#selCountry").value=""; }
   else if(k==="t"){ state.tags=state.tags.filter(t => esc(t) !== v); }
   else if(k==="l"){ state.lang=""; }
   else if(k==="x"){ state.codec=""; $("#selCodec").value=""; }
@@ -1050,40 +1113,54 @@ $("#fActive").addEventListener("click", e => {
   state.page=1; apply(); writeHash();
 });
 function clearFilters(){ Object.assign(state,{q:"",cc:"",lang:"",codec:"",bit:0,tags:[],page:1,favOnly:false});
-  $("#q").value=""; $("#selCountry").value=""; $("#selCodec").value=""; $("#selBit").value="0"; syncPop(); apply(); writeHash(); }
+  $("#q").value=""; $("#selCountry").value=""; $("#selCodec").value=""; $("#selBit").value="0"; apply(); writeHash(); }
 $("#btnClearF").addEventListener("click", clearFilters);
-/* ⭐ My stations view + 📍 Local country shortcut */
-function refreshFavUI(){ const b=$("#btnFav"); if(!b) return;
+/* ⭐ My stations, listed: the Saved pull-down shows what you kept, not just a filter over the list.
+   Rows carry the same three things a card does - play, details, keep/drop - so nothing is lost by
+   not being in the grid. */
+let _byId = null;
+const byId = () => (_byId || (_byId = new Map(ALL.map(s => [s.i, s]))));
+function savedRows(){ const mm=metaMap(); return favList().map(id => byId().get(id) || mm[id]).filter(Boolean); }
+function renderSavedList(){
+  const box=$("#savedList"); if(!box) return;
+  const rows=savedRows();
+  box.innerHTML = rows.length ? rows.map(s => {
+    const nm=s.n||"Unknown station", loc=[countryOf(s), s.l].filter(Boolean).join(" · ");
+    return `<div class="srow" data-id="${esc(s.i)}">`
+      + (logoURL(s)?`<img src="${esc(logoURL(s))}" alt="" loading="lazy">`:"")
+      + `<div class="sn"><b data-sact="info" title="Station details">${esc(nm)}</b>`
+      + `<span>${flag(s.cc)} ${esc(loc)}${s.x?" · "+esc(s.x):""}</span></div>`
+      + `<button class="sb" data-sact="play" title="Play ${esc(nm)}">▶</button>`
+      + `<button class="sb" data-sact="drop" title="Remove from My stations">★</button></div>`;
+  }).join("") : '<div class="sempty">Nothing saved yet. Tap ☆ on any station to keep it here — '
+    + 'your list stays on this device, no account, no sign-in.</div>';
+}
+$("#savedList").addEventListener("click", e => {
+  const b=e.target.closest("[data-sact]"); if(!b) return;
+  const row=b.closest(".srow"), s=byId().get(row.dataset.id) || metaMap()[row.dataset.id]; if(!s) return;
+  if(b.dataset.sact==="play"){ openMenu(""); doPlay(s); }
+  else if(b.dataset.sact==="drop"){ rmFav(row.dataset.id); toast("Removed from My stations"); }
+  else { openMenu(""); showInfo(s); } });
+function refreshFavUI(){
+  const n=favSet.size, b=$("#btnSaved");
   b.classList.toggle("on", !!state.favOnly);
-  b.textContent = (state.favOnly?"★ ":"⭐ ")+"Saved ("+favSet.size+")";
-  b.title = state.favOnly ? "Showing only your saved stations — click to show all" : "Show only your saved stations (shortcut: s)"; }
-$("#btnFav").addEventListener("click", () => { state.favOnly=!state.favOnly; state.page=1; apply(); writeHash(); refreshFavUI(); });
+  $("#favCount").textContent = n ? "("+n+") " : "";
+  b.title = state.favOnly ? "Showing only your saved stations — click for your list" : "Your saved stations (shortcut: s)";
+  const o=$("#btnSavedOnly");
+  o.classList.toggle("on", !!state.favOnly); o.setAttribute("aria-pressed", String(!!state.favOnly));
+  o.textContent = state.favOnly ? "only these ✓" : "only these";
+  $("#favHead").textContent = n ? n+" saved" : "none yet";
+  if(menuOpen("saved")) renderSavedList(); }
+$("#btnSavedOnly").addEventListener("click", () => { state.favOnly=!state.favOnly; state.page=1; apply(); writeHash(); refreshFavUI(); });
+/* ✅ Plays here: the same filter as before, now a switch in the toolbar rather than a panel chip.
+   It is ON by default - a list of stations this browser cannot play is a list of dead ends. */
+function refreshPlayableUI(){ const b=$("#btnPlayable");
+  b.classList.toggle("on", !!state.playOnly); b.setAttribute("aria-pressed", String(!!state.playOnly));
+  b.title = state.playOnly
+    ? `Only stations this browser can play are listed (${fmt(unplayableCount())} hidden — click to show every station)`
+    : "Showing every station, including ones this browser can't play — click to filter"; }
 $("#btnPlayable").addEventListener("click", () => { state.playOnly=!state.playOnly; ls.set("playonly", state.playOnly); state.page=1; apply(); writeHash();
   toast(state.playOnly ? "Showing only stations this browser can play." : "Showing every station — some can't play in this browser.", 5200); });
-const TZCC = { "Europe/London":"GB","Europe/Dublin":"IE","Europe/Paris":"FR","Europe/Berlin":"DE","Europe/Madrid":"ES",
-  "Europe/Rome":"IT","Europe/Amsterdam":"NL","Europe/Lisbon":"PT","Europe/Warsaw":"PL","Europe/Stockholm":"SE",
-  "Europe/Oslo":"NO","Europe/Helsinki":"FI","Europe/Athens":"GR","Europe/Moscow":"RU","Europe/Istanbul":"TR",
-  "America/New_York":"US","America/Chicago":"US","America/Denver":"US","America/Los_Angeles":"US","America/Phoenix":"US",
-  "America/Anchorage":"US","America/Toronto":"CA","America/Vancouver":"CA","America/Mexico_City":"MX","America/Sao_Paulo":"BR",
-  "America/Buenos_Aires":"AR","America/Bogota":"CO","America/Lima":"PE","America/Santiago":"CL","Asia/Tokyo":"JP",
-  "Asia/Seoul":"KR","Asia/Shanghai":"CN","Asia/Hong_Kong":"HK","Asia/Taipei":"TW","Asia/Singapore":"SG","Asia/Kolkata":"IN",
-  "Asia/Karachi":"PK","Asia/Dubai":"AE","Asia/Jerusalem":"IL","Asia/Bangkok":"TH","Asia/Jakarta":"ID","Asia/Manila":"PH",
-  "Africa/Johannesburg":"ZA","Africa/Lagos":"NG","Africa/Cairo":"EG","Africa/Nairobi":"KE","Pacific/Auckland":"NZ" };
-function detectLocalCC(){
-  try{ const m=(navigator.language||"").match(/-([A-Za-z]{2})$/); if(m){ const cc=m[1].toUpperCase(); if(ccName[cc]) return cc; } }catch(e){}
-  try{ const tz=(Intl.DateTimeFormat().resolvedOptions().timeZone)||"";
-    if(tz.indexOf("Australia/")===0) return "AU";
-    if(TZCC[tz]) return TZCC[tz]; }catch(e){}
-  return ""; }
-const LOCAL_CC = detectLocalCC();
-function applyLocalUI(){ const b=$("#btnLocal"); if(!LOCAL_CC){ b.hidden=true; return; }
-  const nm=ccName[LOCAL_CC]||LOCAL_CC;
-  b.hidden=false; b.classList.toggle("on", state.cc===LOCAL_CC);
-  b.textContent = "📍 "+(nm.length<=14?nm:LOCAL_CC);
-  b.title = "Only stations from "+nm+(state.cc===LOCAL_CC?" — click to clear":" — click to filter"); }
-$("#btnLocal").addEventListener("click", () => { if(!LOCAL_CC) return;
-  state.cc = (state.cc===LOCAL_CC) ? "" : LOCAL_CC; $("#selCountry").value = state.cc; syncPop(); state.page=1;
-  apply(); writeHash(); applyLocalUI(); });
 
 /* ===== decorative visualiser: 5 styles, cycled by the 🎛 button ===== */
 /* The five looks live in viz.js, which the mini player loads too. If it did not load at all,
@@ -1135,10 +1212,6 @@ function buildStatic(){
   $("#selCountry").insertAdjacentHTML("beforeend",'<option value="">🌍 All countries</option>');
   META.countries.forEach(c=>$("#selCountry").insertAdjacentHTML("beforeend",`<option value="${esc(c.cc)}">${flag(c.cc)} ${esc(c.c)} (${fmt(c.n)})</option>`));
   META.codecs.slice(0,12).forEach(x=>$("#selCodec").insertAdjacentHTML("beforeend",`<option value="${esc(x.x)}">${esc(x.x)} (${fmt(x.n)})</option>`));
-  $("#popRow").insertAdjacentHTML("beforeend",'<span class="lbl">Country</span>');
-  META.countries.slice(0,10).forEach(c=>$("#popRow").insertAdjacentHTML("beforeend",`<button class="ftag" data-cc="${esc(c.cc)}">${flag(c.cc)} ${esc(c.c)}</button>`));
-  $("#popRow").insertAdjacentHTML("beforeend",'<button class="ftag on" data-cc="">🌍 All</button>');
-  $("#popRow").addEventListener("click",e=>{const b=e.target.closest(".ftag");if(!b)return;state.cc=b.dataset.cc;state.page=1;$("#selCountry").value=state.cc;syncPop();apply()});
   const L=ls.get("last",null); if(L&&L.m){ setStation(L.m); setPlaying(false); P.owner="main"; }
   $("#bar").style.display="flex"; setVolUI();
   syncBarSpace();
@@ -1146,12 +1219,12 @@ function buildStatic(){
   window.addEventListener("resize",syncBarSpace);
   syncArtPop();
 }
-function syncPop(){ document.querySelectorAll("#popRow .ftag").forEach(b=>b.classList.toggle("on",b.dataset.cc===state.cc)) }
 function renderTagRow(){ const counts=tagCounts(tagPoolRows()); const shown=counts.slice(0,visibleTags),rest=counts.length-shown.length;
   let h='<span class="lbl">Genre</span>'+shown.map(([t,n],i)=>`<button class="ftag${state.tags.includes(t)?" on":""}" data-tag="${esc(t)}">${esc(t)}<span class="n">${fmt(n)}</span></button>`).join("");
   if(rest>0)h+=`<button class="more">+${rest} more</button>`; if(visibleTags>24)h+='<button class="less">show fewer</button>';
   if(!counts.length)h+='<span style="color:var(--mut);font-size:12px">no genres in this scope</span>';
-  $("#tagRow").innerHTML=h; }
+  $("#tagRow").innerHTML=h;
+  $("#genreCount").textContent = counts.length ? counts.length+" in this scope" : ""; }
 function renderLangRow(){ const counts=langCounts(tagPoolRows());
   if(!counts.length){ $("#langRow").classList.add("sec-empty"); return }
   $("#langRow").classList.remove("sec-empty");
@@ -1205,9 +1278,9 @@ document.addEventListener("keydown",e=>{ const t=e.target, typing = t && (t.tagN
   if(e.key==="Escape"){ $("#modal").style.display="none"; return; }
   if(typing || e.metaKey || e.ctrlKey || e.altKey) return;
   if(e.key==="/"){ e.preventDefault(); $("#q").focus(); }
-  else if(e.key==="f"||e.key==="F"){ facHidden=!facHidden; ls.set("fil-panel",facHidden); applyFacets(); }
+  else if(e.key==="g"||e.key==="G"){ openMenu(menuOpen("genre") ? "" : "genre"); }
   else if(e.key==="v"||e.key==="V"){ $("#btnViz").click(); }
-  else if(e.key==="s"||e.key==="S"){ state.favOnly=!state.favOnly; state.page=1; apply(); writeHash(); refreshFavUI(); } });
+  else if(e.key==="s"||e.key==="S"){ openMenu(menuOpen("saved") ? "" : "saved"); } });
 function pagerHTML(total){ const pages=Math.max(1,Math.ceil(total/PSZ)); if(state.page>pages)state.page=pages;
   const cur=state.page; const nums=[...new Set([1,pages,cur-1,cur,cur+1])].filter(p=>p>=1&&p<=pages).sort((a,b)=>a-b);
   /* The arrows are the control, so they get a real touch target (44px is the floor for a finger on
@@ -1239,16 +1312,18 @@ function apply(){ const t0=performance.now();
   const slice=rows.slice((state.page-1)*PSZ,state.page*PSZ);
   const crumb=[state.cc?(ccName[state.cc]||state.cc)+" ("+fmt(total)+")":null,state.lang?state.lang:null,state.codec?state.codec:null].filter(Boolean).join(" · ");
   $("#cntLine").innerHTML=`<span style="margin:0">${crumb?`<b>${esc(crumb)}</b> · `:""}<b>${fmt(total)}</b> stations · page <b>${state.page}</b>/${fmt(pages)} · ${fmt((state.page-1)*PSZ+1)}–${fmt(Math.min(state.page*PSZ,total))}${state.tags.length?" · genre: "+state.tags.map(esc).join(", "):""}${state.playOnly&&unplayableCount()?` · <span title="hidden because this browser can't play them">${fmt(unplayableCount())} hidden</span>`:""}</span>`;
-  const bp=$("#btnPlayable"); if(bp){ bp.classList.toggle("on", !!state.playOnly);
-    bp.title = state.playOnly ? `Only stations this browser can play are listed (${fmt(unplayableCount())} hidden — click to show all)` : "Showing every station, including ones this browser can't play — click to filter"; }
+  refreshPlayableUI();
   const ph=pagerHTML(total); $("#pagerTop").innerHTML=ph; $("#pagerBottom").innerHTML=ph; bindPager();
   $("#list").innerHTML=slice.map(([s,oi])=>cardHTML(s,oi)).join("");
-  renderTagRow(); renderLangRow(); renderActiveFilters(); applyLocalUI(); refreshFavUI(); window.__perf=performance.now()-t0; document.body.dataset.ready="1"; }
+  /* the genre chips are rendered only while their menu is open: a closed menu is not worth the
+     tag counts of the whole catalogue on every keystroke */
+  if(menuOpen("genre")){ renderTagRow(); renderLangRow(); }
+  renderActiveFilters(); refreshFavUI(); window.__perf=performance.now()-t0; document.body.dataset.ready="1"; }
 function readHash(){ const h=new URLSearchParams(location.hash.slice(1));
   state.q=h.get("q")||"";state.cc=h.get("c")||"";state.lang=h.get("l")||"";state.codec=h.get("x")||"";state.bit=+h.get("b")||0;state.sort=h.get("s")||"k";
   state.tags=(h.get("t")||"").split(",").filter(Boolean);state.page=+h.get("p")||1;state.favOnly=h.get("f")==="1";
   if(h.has("pl")) state.playOnly = h.get("pl")!=="0";     // deep links can force the full list
-  $("#q").value=state.q;$("#selCountry").value=state.cc;$("#selCodec").value=state.codec;$("#selBit").value=String(state.bit);$("#selSort").value=state.sort;syncPop() }
+  $("#q").value=state.q;$("#selCountry").value=state.cc;$("#selCodec").value=state.codec;$("#selBit").value=String(state.bit);$("#selSort").value=state.sort }
 let ht; function writeHash(){ clearTimeout(ht); ht=setTimeout(()=>{ try{ const h=new URLSearchParams();
   if(state.q)h.set("q",state.q);if(state.cc)h.set("c",state.cc);if(state.lang)h.set("l",state.lang);if(state.codec)h.set("x",state.codec);
   if(state.bit)h.set("b",state.bit);if(state.sort!=="k")h.set("s",state.sort);if(state.tags.length)h.set("t",state.tags.join(","));if(state.page>1)h.set("p",state.page);if(state.favOnly)h.set("f","1");
@@ -1293,15 +1368,18 @@ function endSearchTyping(){ const q=$("#q"); if(!q) return;
 }
 $("#q").addEventListener("keydown",e=>{ if(e.key==="Enter"||e.keyCode===13){ e.preventDefault(); endSearchTyping(); } });
 $("#q").addEventListener("search",endSearchTyping);
-$("#selCountry").onchange=e=>{state.cc=e.target.value;state.page=1;syncPop();apply();writeHash()};
+$("#selCountry").onchange=e=>{state.cc=e.target.value;state.page=1;apply();writeHash()};
 $("#selCodec").onchange=e=>{state.codec=e.target.value;queueApply()};
 $("#selBit").onchange=e=>{state.bit=+e.target.value;queueApply()};
 $("#selSort").onchange=e=>{state.sort=e.target.value;apply();writeHash()};
 $("#btnReset").onclick=()=>{Object.assign(state,{q:"",cc:"",lang:"",codec:"",bit:0,sort:"k",tags:[],page:1});
-  $("#q").value="";$("#selCountry").value="";$("#selCodec").value="";$("#selBit").value="0";$("#selSort").value="k";syncPop();apply();writeHash()};
-$("#tagRow").addEventListener("click",e=>{const b=e.target.closest(".ftag");if(!b)return;
-  if(b.classList.contains("more")){visibleTags+=40;renderTagRow();return}
-  if(b.classList.contains("less")){visibleTags=24;renderTagRow();return}
+  $("#q").value="";$("#selCountry").value="";$("#selCodec").value="";$("#selBit").value="0";$("#selSort").value="k";apply();writeHash()};
+$("#tagRow").addEventListener("click",e=>{
+  /* "+N more" / "show fewer" are plain links, not chips, so they answer first - and they answered
+     to nothing at all until this was split out (closest(".ftag") is null for them). */
+  const mx=e.target.closest(".more,.less");
+  if(mx){ visibleTags = mx.classList.contains("more") ? visibleTags+40 : 24; renderTagRow(); return }
+  const b=e.target.closest(".ftag");if(!b)return;
   const t=b.dataset.tag;const i=state.tags.indexOf(t);if(i>=0)state.tags.splice(i,1);else state.tags.push(t);state.page=1;apply();writeHash()});
 $("#list").addEventListener("click",e=>{const b=e.target.closest("[data-act][data-i]");if(!b)return;const s=ALL[+b.dataset.i];const act=b.dataset.act;
   if(act==="play")doPlay(s);
@@ -1319,10 +1397,15 @@ window.__dbg={ ALL:()=>ALL.length, state:()=>({...state}), player:()=>({cur:P.cu
   stream:()=>({mine:P.mine, playing:P.playing, hasSrc:!!audio.src, cur:P.cur&&P.cur.n,
     owner:(relOwner()||{}).kind||null, vol:P.vol}),
   viz:()=>({on:vizOn,style:VIZSTYLES[vizStyle],idx:vizStyle}),
-  fav:()=>({count:favSet.size,only:state.favOnly,btn:$("#btnFav").textContent.trim()}), toggleFavFirst:()=>toggleFav(ALL[0]),
-  local:()=>({cc:LOCAL_CC,label:$("#btnLocal").textContent.trim(),hidden:$("#btnLocal").hidden}),
-  ui:()=>({sections:{...secHidden},facetsHidden:!!facHidden,headerCompact:false,
-    activeChips:document.querySelectorAll("#fActive .fchip").length,toTop:document.querySelector("#toTop").classList.contains("show")}),
+  fav:()=>({count:favSet.size,only:state.favOnly,btn:$("#btnSaved").textContent.trim(),
+    rows:document.querySelectorAll("#savedList .srow").length}), toggleFavFirst:()=>toggleFav(ALL[0]),
+  menus:()=>({open:menuName,genre:menuOpen("genre"),saved:menuOpen("saved"),
+    genres:document.querySelectorAll("#tagRow .ftag").length,
+    langs:document.querySelectorAll("#langRow option").length}),
+  playable:()=>({on:!!state.playOnly,label:$("#btnPlayable").textContent.trim()}),
+  ui:()=>({playOnly:!!state.playOnly,favOnly:!!state.favOnly,headerCompact:false,
+    activeChips:document.querySelectorAll("#fActive .fchip").length,
+    chipRow:!$("#chipRow").hidden,toTop:document.querySelector("#toTop").classList.contains("show")}),
   clearFilters };
 </script>
 </body>
