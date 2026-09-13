@@ -101,7 +101,8 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
      controls leave the flow but the box keeps their height (--tbh, measured in JS), so nothing
      below the toolbar jumps when the state changes; the box is transparent and passes touches
      through, so the list keeps scrolling under it. */
-  body.quick:not(.scrolling) .toolbar{min-height:var(--tbh,0px);background:none;pointer-events:none}
+  body.quick:not(.scrolling) .toolbar{align-items:flex-start;align-content:flex-start;
+    min-height:var(--tbh,0px);background:none;pointer-events:none}
   body.quick:not(.scrolling) .toolbar select,
   body.quick:not(.scrolling) .toolbar .tbacts{position:absolute;top:0;left:0;visibility:hidden;pointer-events:none}
   body.quick:not(.scrolling) #q{flex:1 1 100%;pointer-events:auto}
