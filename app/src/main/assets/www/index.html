@@ -60,34 +60,40 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
 /* The narrowest phones: 320px leaves 288px of content, and the two badges together are about
    300px at the sizes above, so they step down once more rather than one of them folding. */
 /* Phone: let the controls shrink and pack instead of wrapping one per line. The selects give up
-   width first (their text ellipsises); the two buttons never shrink. */
+   width first (their text ellipsises); the buttons never shrink. */
 @media(max-width:900px){
   .toolbar{gap:6px}
   .toolbar select{font-size:12.5px;padding:8px 6px;min-width:0;flex:0 1 auto;max-width:118px}
   #selCountry{flex:1 1 96px}
   .toolbar .btn{padding:8px 10px;font-size:12.5px;white-space:nowrap}
+  /* Phone and tablet: the pager takes a line of its own under the stations count and fills it -
+     arrows at the two ends, the page numbers spread between them - rather than bunching up on the
+     left with dead space beside it. */
+  .resbar .pager{flex:1 1 100%;justify-content:space-between}
 }
-/* Narrowest phones: the labels give up their carets and a little padding, and the search field
-   takes the first line beside the country select so the whole set of controls lands in THREE
-   rows instead of four (field + country / the other three selects / the buttons). Nothing here
-   may be wider than the row - a toolbar wider than the screen zooms a phone page out. */
+/* Landscape phones: the same four bars, just tighter. A 390px-tall viewport must not hand half of
+   itself to chrome - and nothing else changes, the order and the shapes stay put. */
+@media(max-height:520px) and (max-width:900px){
+  .toolbar{gap:6px;padding:6px 0 8px}
+  .tbgrid{gap:6px}
+}
+/* Narrowest phones: the labels give up their carets and a little padding. The layout is the same
+   four bars (search / stations / Format-Bitrate-Country / Saved-Reset) whatever the width - this
+   only stops a label from pushing its cell wider. Nothing here may be wider than the row: a toolbar
+   wider than the screen zooms a phone page out. */
 @media(max-width:430px){
   .cv{display:none}
-  .tbacts{gap:5px}
-  .tbacts .btn{padding:8px 8px;font-size:12px}
-  #btnPlayable{padding:7px 8px 7px 7px}
-  /* .toolbar #q, not just #q: the base rule for the field comes later in this sheet, so the phone
-     override has to out-specify it to win. */
-  .toolbar #q{flex:1 1 190px;min-width:180px}
+  .toolbar .btn{padding:8px 9px;font-size:12px}
+  /* .toolbar #q, not #q: the base rule for the field comes later in this sheet, so the phone
+     override has to out-specify it to win. flex-basis 0 + min-width 0 is what stops the input's
+     intrinsic width (a search box comes with a stubborn one) from setting a minimum width for the
+     whole page - without it a 320px phone gets zoomed out to fit. */
+  .toolbar #q{flex:1 1 0;min-width:0}
+  /* The Verified switch is not in here any more - it lives in the stations line below the toolbar -
+     so the field keeps its plain padding and the whole row is the input. */
+  #btnPlayable{font-size:10px;padding:0 6px;gap:4px}
   .toolbar select{max-width:104px}
   #selCountry{max-width:118px}
-}
-/* 360px phones and narrower: tighten the buttons the last little bit so the four of them still
-   fit one line instead of spilling Reset onto a row of its own. */
-@media(max-width:380px){
-  .tbacts{gap:4px}
-  .tbacts .btn{padding:8px 7px;font-size:11.5px}
-  #btnPlayable{padding:7px 7px 7px 6px}
 }
 /* Scrolling is reading time. Whatever the page is doing, the bar gets out of the way by sliding
    off to the LEFT, and what comes back 1.5s after the page stops is the SEARCH FIELD ONLY - the
@@ -104,7 +110,10 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
   body.quick:not(.scrolling) .toolbar{align-items:flex-start;align-content:flex-start;
     min-height:var(--tbh,0px);background:none;pointer-events:none}
   body.quick:not(.scrolling) .toolbar select,
-  body.quick:not(.scrolling) .toolbar .tbacts{position:absolute;top:0;left:0;visibility:hidden;pointer-events:none}
+  body.quick:not(.scrolling) .countrow,
+  body.quick:not(.scrolling) .tbgrid,
+  body.quick:not(.scrolling) #btnSaved,
+  body.quick:not(.scrolling) #btnReset{position:absolute;top:0;left:0;visibility:hidden;pointer-events:none}
   body.quick:not(.scrolling) #q{flex:1 1 100%;pointer-events:auto}
 }
 @media (prefers-reduced-motion:reduce){
@@ -123,20 +132,21 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
 #q:focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(31,227,255,.18)}
 select{background:#0d0e16;border:2px solid var(--line);color:var(--tx);border-radius:10px;padding:8px 9px;font-size:13.5px;outline:none;max-width:220px}
 select:focus{border-color:var(--purp)}
-/* Reset, Genre, Saved and plays-here are one group: they stay together on one line unless the row
-   is genuinely too narrow for them, in which case they wrap inside the group rather than squeezing
-   their labels or pushing the row wider than the screen. */
-.tbacts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-/* 44px tall: these are finger targets on a phone, and the toolbar is where a mis-tap costs you
-   the thing you were reading. */
-.tbacts .btn{min-height:44px}
+/* Row 1 is the search field, full length, and nothing else: the Verified switch that used to sit in
+   its right-hand corner moved down to the stations line.
+   min-width:0 on both the row and the field: a search input otherwise holds a stubborn intrinsic
+   minimum, and the whole page ends up wider than a narrow phone can show. */
+.searchwrap{position:relative;display:flex;align-items:center;flex:1 1 100%;min-width:0}
+/* Every toolbar control is a finger target: the toolbar is where a mis-tap costs you the thing
+   you were reading. */
+.toolbar .btn{min-height:44px}
 .btn{appearance:none;border:2px solid var(--line);background:#10111c;color:var(--tx);border-radius:10px;padding:8px 13px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px;
   transition:transform .08s,box-shadow .08s,background .12s,border-color .12s}
 .btn:hover{border-color:var(--cyan);box-shadow:3px 3px 0 rgba(31,227,255,.35);transform:translate(-1px,-1px)}
 .btn:active{transform:translate(1px,1px);box-shadow:none}
 .btn.pink{border-color:var(--pink);color:#ffd3ea}.btn.pink:hover{background:var(--pink);color:#1a0312;box-shadow:3px 3px 0 rgba(255,62,165,.4)}
-/* The toolbar's two pull-downs (Genre, Saved). They FLOAT over the list: opening one must not
-   push a single result down the page, which is what the in-flow filter panel used to do. */
+/* The toolbar's pull-down (Saved). It FLOATS over the list: opening it must not push a single
+   result down the page, which is what the in-flow filter panel used to do. */
 .menu{position:absolute;top:100%;right:0;z-index:60;width:min(540px,calc(100vw - 26px));
   max-height:min(64vh,460px);overflow:auto;-webkit-overflow-scrolling:touch;
   background:rgba(15,16,24,.985);border:1px solid var(--line);border-radius:14px 6px 14px 6px;
@@ -147,15 +157,11 @@ select:focus{border-color:var(--purp)}
   font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px}
 .mttl b{color:var(--tx);font-size:14px;letter-spacing:0;text-transform:none}
 .mttl span{text-transform:none;letter-spacing:.2px}
-.mfoot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);
-  margin-top:9px;padding-top:8px}
-.frow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
-.frow .lbl{color:var(--mut);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;width:64px;flex:0 0 auto}
 .ftag{border:2px dashed rgba(255,255,255,.28);background:rgba(20,21,36,.85);color:#e6e9ff;border-radius:6px 14px 6px 14px;padding:3px 11px;font-size:12.5px;cursor:pointer;user-select:none;font-weight:600;transition:all .1s}
 .ftag:hover{border-style:solid;border-color:var(--cyan);transform:rotate(-1deg)}
 .ftag.on{background:var(--pink);border:2px solid var(--pink);color:#fff;box-shadow:2px 2px 0 rgba(0,0,0,.4);border-radius:14px 6px 14px 6px}
 .ftag .n{opacity:.75;margin-left:5px;font-size:11px}
-.menu[hidden],.chiprow[hidden],.frow.sec-empty{display:none}
+.menu[hidden],.chiprow[hidden]{display:none}
 /* Active filters: one slim line under the toolbar, there only while something is filtered. The
    toolbar itself keeps its height, and this line scrolls away with the results. */
 .chiprow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:10px 0 0}
@@ -173,8 +179,6 @@ select:focus{border-color:var(--purp)}
 .srow .sb{border:2px solid var(--line);background:#10111c;color:var(--tx);border-radius:9px;
   min-width:44px;min-height:42px;font-size:14px;font-weight:800;cursor:pointer;flex:0 0 auto}
 .srow .sb:hover{border-color:var(--cyan)}
-.fchip{border:2px solid var(--purp);background:rgba(160,107,255,.14);color:#e2d6ff;border-radius:6px 14px 6px 14px;padding:2px 9px;font-size:12px;font-weight:700;cursor:pointer}
-.fchip:hover{background:var(--purp);color:#fff}
 .fclear{border:2px solid var(--warn);background:rgba(255,159,28,.12);color:#ffd9a3;border-radius:6px 14px 6px 14px;padding:2px 10px;font-size:12px;font-weight:800;cursor:pointer}
 .fclear:hover{background:var(--warn);color:#231a05}
 #toTop{position:fixed;right:16px;bottom:calc(var(--barh,0px) + 16px);z-index:55;width:44px;height:44px;border-radius:50%;border:2px solid var(--pink);
@@ -184,6 +188,24 @@ select:focus{border-color:var(--purp)}
 .more,.less{color:var(--cyan);font-size:12px;cursor:pointer;border:none;background:none;padding:4px 2px;font-weight:700}
 .resbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin:14px 0 8px;font-size:13.5px;color:var(--mut)}
 .resbar b{color:var(--tx)}
+/* The pager sits at the right-hand end of its own row on a desktop; a phone gives it the whole
+   line (see the 900px media query). The stations count used to live on this row - it is up in the
+   toolbar now, straight under the search field. */
+.resbar .pager{margin-left:auto}
+/* The stations line: the same full-length bar shape as the search field above it, with the count at
+   the left and the Verified switch inset at its right-hand end. Same height, same border, same
+   radius - the two bars are a pair, which is what "formatted equally" means here. */
+.countrow{display:flex;align-items:center;gap:8px;flex:1 1 100%;min-width:0;min-height:42px;
+  background:#0d0e16;border:2px solid var(--line);border-radius:12px;padding:0 5px 0 14px}
+.countrow #cntLine{flex:1 1 auto;min-width:0;font-size:13.5px;color:var(--mut);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* The remaining controls in equal cells: Format / Bitrate / Country as thirds, Saved / Reset as
+   halves. A grid, not flex, so each cell is the same width whatever its label says. */
+.tbgrid{display:grid;gap:8px;flex:1 1 100%;min-width:0}
+.tbgrid.tb3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.tbgrid.tb2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.tbgrid > select{max-width:none;width:100%;min-width:0}
+.tbgrid > .btn{width:100%;min-width:0;justify-content:center}
 /* min(320px,100%) rather than a flat 320px: a 320px phone leaves 288px of content width, and a
    320px minimum column then sticks 32px out of it - which is what makes the whole page 16px
    wider than the phone and gets it scaled down to fit. Above 320px of room nothing changes. */
@@ -214,16 +236,20 @@ select:focus{border-color:var(--purp)}
 .icongrp{margin-left:auto;display:flex;gap:4px;align-items:center;flex:0 0 auto}
 .iconbtn.star{color:var(--mut)}
 .iconbtn.star.on{color:#151605;background:var(--yel);border-color:var(--yel)}
-/* "Plays here" is a setting, not an action, so it is drawn as a switch in a button-sized hit box.
-   On = the list only holds stations this browser can really play (the default). */
-#btnPlayable{gap:7px;padding:6px 11px 6px 9px}
-#btnPlayable .sw{position:relative;flex:0 0 auto;width:26px;height:15px;border-radius:9px;
-  background:rgba(255,255,255,.2);border:1px solid var(--line);transition:background .16s,border-color .16s}
-#btnPlayable .sw::after{content:"";position:absolute;top:1px;left:1px;width:11px;height:11px;border-radius:50%;
+/* "Verified" is a setting, not an action, so it is drawn as a switch - and it lives at the right end
+   of the stations line under the toolbar, where he asked for it (it used to sit inside the search
+   field). On = the list only holds stations this browser can really play (the default). Kept
+   deliberately small and quiet so it reads as a hint beside the count, not a second control. */
+#btnPlayable{flex:0 0 auto;
+  gap:4px;min-height:24px;padding:0 7px;font-size:10.5px;line-height:1;border-width:1px;
+  border-radius:8px;background:rgba(16,17,28,.72)}
+#btnPlayable .sw{position:relative;flex:0 0 auto;width:20px;height:12px;border-radius:7px;
+  background:rgba(255,255,255,.16);border:1px solid var(--line);transition:background .16s,border-color .16s}
+#btnPlayable .sw::after{content:"";position:absolute;top:1px;left:1px;width:8px;height:8px;border-radius:50%;
   background:#c9ccdd;transition:transform .16s,background .16s}
-#btnPlayable.on{background:var(--cyan);border-color:var(--cyan);color:#04161a}
-#btnPlayable.on .sw{background:rgba(4,22,26,.35);border-color:rgba(4,22,26,.35)}
-#btnPlayable.on .sw::after{transform:translateX(11px);background:#fff}
+#btnPlayable.on{background:rgba(31,227,255,.16);border-color:var(--cyan);color:var(--cyan)}
+#btnPlayable.on .sw{background:rgba(31,227,255,.5);border-color:var(--cyan)}
+#btnPlayable.on .sw::after{transform:translateX(8px);background:#04161a}
 .btn.on{border-color:var(--cyan);border-radius:14px 6px 14px 6px}
 .play{background:rgba(255,62,165,.14);border-color:var(--pink);color:#ff9fd2}
 .play:hover{background:var(--pink);color:#1a0312;box-shadow:3px 3px 0 rgba(255,62,165,.4)}
@@ -314,20 +340,25 @@ body{padding-bottom:var(--barh,0px)}
 #btnViz.pink{border-color:var(--pink);color:var(--pink)}
 /* The canvas is forced off below 900px, so the visualiser toggle down there was a button
    that could not do anything visible. Hide it where it cannot work. */
-/* Tablet and phone. The row has no room for everything a desktop has, so it changes shape:
-   the artwork becomes the pop-out control (it is the obvious thing to tap to send the player
-   somewhere else), the button that used to be Pop-out becomes the visualiser toggle, and the
-   canvas opens as a strip UNDER the row rather than inside it. Desktop is untouched. */
+/* Tablet and phone. The row has no room for everything a desktop has, so it changes shape: the
+   artwork and the idle MINI label carry the pop-out (they do now at every width), the 🎲 Random
+   button steps aside, and the visualiser canvas opens as a strip UNDER the row rather than inside
+   it. */
 @media(max-width:900px){
   #bar{flex-wrap:wrap}          /* only ever wraps for the visualiser strip's own line */
   #bar .wr-nm{flex:1 1 0}
   #bar .art{width:44px;height:44px}
   #bar #viz{flex:1 1 100%;max-width:none;height:40px;order:9}
-  #btnPop{display:none}
+  #btnRandom{display:none}
   #btnViz{display:inline-block}
-  #bArt.art-pop{cursor:pointer}
-  #bArt.art-pop:hover,#bArt.art-pop:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
 }
+/* The artwork and the idle MINI label both open the pop-out player, at every width: the one button
+   that used to do it is the 🎲 Random button now, so the player is reached through the thing that
+   represents it - the cover picture and the name on the strip. */
+#bArt.art-pop{cursor:pointer}
+#bArt.art-pop:hover,#bArt.art-pop:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+#bName.nm-pop{cursor:pointer}
+#bName.nm-pop:hover{color:var(--cyan)}
 
 /* modal */
 #modal{position:fixed;inset:0;background:rgba(5,6,10,.78);z-index:80;display:none;align-items:center;justify-content:center;padding:18px}
@@ -544,35 +575,38 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
 </header>
 
 <div class="toolbar">
-  <input id="q" type="search" placeholder="Search stations by name, genre, country, language…  ( / focuses )" autocomplete="off">
-  <select id="selCountry" title="Country"></select>
-  <select id="selCodec" title="Format"><option value="">Format</option></select>
-  <select id="selBit" title="Minimum bitrate">
-    <option value="0" selected>Bitrate</option><option value="64">≥ 64 kbps</option>
-    <option value="128">≥ 128 kbps</option><option value="192">≥ 192 kbps</option>
-  </select>
-  <select id="selSort" title="Sort">
-    <option value="k">Most clicked</option><option value="v">Most voted</option>
-    <option value="n">Name A–Z</option><option value="b">Bitrate</option>
-  </select>
-  <div class="tbacts">
-    <button class="btn" id="btnGenre" aria-expanded="false" aria-controls="genreMenu" title="Pick genres to listen to (shortcut: g)">🏷 Genre <span class="cv">▾</span></button>
+  <!-- The toolbar reads down the page in the order it gets used, one full-length bar at a time:
+       row 1 the search field, row 2 how many stations are listed plus the Verified switch (the same
+       bar shape as the field above it), row 3 Format / Bitrate / Country as equal thirds, row 4
+       Saved / Reset as equal halves. There is no genre pull-down any more: the search field finds
+       genres, so a second control for them only cluttered the page and fell apart in landscape.
+       The DOM order IS the order on screen - flex-wrap fills the lines as the controls are written. -->
+  <div class="searchwrap">
+    <input id="q" type="search" size="12" placeholder="Search stations by name, genre, country, language…  ( / focuses )" autocomplete="off">
+  </div>
+
+  <div class="countrow">
+    <span id="cntLine">…</span>
+    <button class="btn inplay" id="btnPlayable" aria-pressed="true" title="Verified: only list stations this browser can really play — the rest stay hidden"><span class="sw" aria-hidden="true"></span>Verified</button>
+  </div>
+
+  <div class="tbgrid tb3">
+    <select id="selCodec" title="Format"><option value="">Format</option></select>
+    <select id="selBit" title="Minimum bitrate">
+      <option value="0" selected>Bitrate</option><option value="64">≥ 64 kbps</option>
+      <option value="128">≥ 128 kbps</option><option value="192">≥ 192 kbps</option>
+    </select>
+    <select id="selCountry" title="Country"></select>
+  </div>
+
+  <div class="tbgrid tb2">
     <button class="btn" id="btnSaved" aria-expanded="false" aria-controls="savedMenu" title="Your saved stations (shortcut: s)">⭐ Saved <span id="favCount"></span><span class="cv">▾</span></button>
-    <button class="btn" id="btnPlayable" aria-pressed="true" title="Only list stations this browser can actually play"><span class="sw" aria-hidden="true"></span>Plays here</button>
     <button class="btn" id="btnReset" title="Clear the search and every filter">Reset</button>
   </div>
 
-  <!-- The two pull-downs live inside the toolbar so they ride with it: open, they float over the
-       list (nothing moves), and the scroll-away gesture takes them along. -->
-  <div class="menu" id="genreMenu" hidden>
-    <div class="mttl"><b>Pick a genre</b><span id="genreCount"></span></div>
-    <div class="frow" id="tagRow"></div>
-    <div class="frow" id="langRow"></div>
-    <div class="mfoot">
-      <span style="color:var(--mut);font-size:12px">Genres add up: pick two and you get stations tagged with both.</span>
-    </div>
-  </div>
-
+  <!-- The Saved pull-down lives inside the toolbar so it rides with it: open, it floats over the
+       list (nothing moves). While it is open the toolbar is PINNED - the scroll handler leaves it
+       (and the menu hanging from it) alone, so the panel stays usable while the page scrolls. -->
   <div class="menu" id="savedMenu" hidden>
     <div class="mttl"><b>⭐ My stations</b><span id="favHead"></span>
       <button class="ftag" id="btnSavedOnly" aria-pressed="false" title="Show only your saved stations in the list">only these</button>
@@ -581,9 +615,7 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
   </div>
 </div>
 
-<div class="chiprow" id="chipRow" hidden><span class="chips" id="fActive"></span><button class="fclear" id="btnClearF" title="Remove every active filter">Clear filters ✕</button></div>
-
-<div class="resbar"><span id="cntLine">…</span><span class="pager" id="pagerTop"></span></div>
+<div class="resbar"><span class="pager" id="pagerTop"></span></div>
 <div class="grid" id="list"></div>
 <div class="resbar" style="margin-top:14px"><span></span><span class="pager" id="pagerBottom"></span></div>
 </div>
@@ -596,7 +628,7 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
 <div id="bar">
   <img class="art" id="bArt" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='80'%3E📻%3C/text%3E%3C/svg%3E">
   <div class="wr-nm">
-    <div class="nm" id="bName" title="Station details">Pick a station</div>
+    <div class="nm" id="bName" title="Station details">MINI</div>
     <div class="who" id="bMeta"></div>
   </div>
   <span class="badge" id="bState" style="display:none"></span>
@@ -604,7 +636,7 @@ code{background:#0b0c12;padding:1px 5px;border-radius:5px;font-size:12px;word-br
   <button class="bctrl" id="bStop" title="Stop">⏹</button>
   <span id="volWrap"><input type="range" id="vol" min="0" max="1" step="0.01"><span id="volPct">90%</span></span>
   <button class="btn" id="btnBarSite" style="padding:6px 10px">Website</button>
-  <button class="btn pink" id="btnPop" style="padding:6px 10px" aria-label="Open the pop-out mini player"><span class="ico" aria-hidden="true">⧉</span> <span class="lbl">Pop-out</span></button>
+  <button class="btn pink" id="btnRandom" style="padding:6px 10px" aria-label="Play a random station from the list you are looking at"><span class="ico" aria-hidden="true">🎲</span> <span class="lbl">Random</span></button>
   <button class="bctrl" id="btnViz" title="Visualiser: off — click to cycle 5 styles" style="font-size:15px">🎛</button>
   <canvas id="viz" height="44" title="Decorative visualiser (radio streams are cross-origin, so this is a look, not a live spectrum)"></canvas>
 </div>
@@ -798,26 +830,62 @@ function setPlaying(on){ P.playing=on; P.mine=ownMine();
   if(on){ st.textContent = P.mine ? "playing here" : "playing in "+((P.remoteKind==="pop")?"pop-out":"another tab");
           st.className = "badge "+(P.mine?"on":"remote"); }
   syncPlayBtns(); }
-function setStation(m){ P.cur = m; if(!m){ $("#bName").textContent="Pick a station"; $("#bMeta").textContent=""; return; }
+/* The strip at the bottom of the page is the mini player: with nothing loaded it wears its own
+   name, not an instruction (he asked for the short label - it is the phone's widest-text slot). */
+function setStation(m){ P.cur = m; if(!m){ $("#bName").textContent="MINI"; $("#bMeta").textContent=""; syncPopAffordance(); return; }
   $("#bName").textContent = m.n; $("#bMeta").textContent = flag(m.cc)+" "+countryOf(m)+" · "+(m.l||"")+" · "+(m.x||"")+(m.b?" "+m.b+"kbps":"");
   const art=logoURL(m);
   if(art){ const im=new Image(); im.onload=()=>{$("#bArt").src=art}; im.src=art; }
+  syncPopAffordance();                 /* the MINI label stops being the pop-out offer here */
   ls.set("last",{m,ts:Date.now()}); }
+/* --- the follower: live, silent, and ready ------------------------------------------------
+   Exactly one window *sounds* the stream. A window that expects to get it back (the page while the
+   mini player has it, the mini player while the page has it) keeps its own element PLAYING the
+   same stream with muted = true: live, at the live edge, making no sound.
+   Why playing and not merely buffered: a live stream's buffered data is stale the moment you stop
+   reading it, so a window that pauses and resumes pays the whole connection over again - measured
+   here, 2.5 s to get the sound back from the mini player's ⤴ and 4.2 s after its window was closed.
+   A silent live follower turns every hand-over into a swap - mute this one, unmute that one - with
+   no connect and no buffer to fill. Muted playback is allowed without any user gesture, so it works
+   in a window that has never been touched too.
+   It is a second connection to the station while it lasts (only while two windows are both on the
+   same stream), and that is what the hand-over being smooth in both directions costs. */
+let primedFor = null;                     // the stream this element is holding, ready to go
+function primeElement(m){ const u = m && m.u; if(!u) return false;
+  if(primedFor === u && audio.getAttribute("src")) return true;   // never re-load a live stream
+  primedFor = u; audio.preload = "auto";
+  try{ audio.src = u; audio.load(); }catch(e){}
+  return true; }
+function dropPrime(){ primedFor = null; audio.preload = "none";
+  try{ audio.muted = false; audio.removeAttribute("src"); }catch(e){} }
+function warmFollower(){                  // never plays, never claims: it only holds the stream
+  if(P.mine) return;
+  if(!P.playing || !P.cur){ if(!P.playing) dropPrime(); return; }
+  primeElement(P.cur); }
+
+/* The follower is a PRIMED BUFFER, not a second player. A live, muted second connection was tried
+   here and taken out again: a station that allows one listener per client drops the older copy the
+   moment another opens, so the standby died and the hand-back paid a full reconnect anyway. A short
+   fetch while the other window plays is harmless by comparison, and it is what makes a fresh
+   hand-over (open the mini player, hand straight back) start with no connect at all. */
+
 /* --- audio control: only an owner ever touches the element --- */
 let lastPlayErr = "", handover = false;
-function audioStart(m){ setStation(m); P.mine=true; setOwner(true);
-  audio.src=m.u; audio.volume=P.vol;
-  audio.play().then(()=>{ lastPlayErr=""; setPlaying(true); bcastState(); })
+function audioStart(m){ setStation(m); P.mine=true;
+  primeElement(m); audio.volume=P.vol;
+  audio.play().then(()=>{ lastPlayErr=""; setOwner(true); setPlaying(true); bcastState(); })
     .catch(e=>{ lastPlayErr=(e&&e.name)||"error"; setPlaying(false); setOwner(false); P.mine=false;
       toast("⚠ Your browser blocked playback — press ▶ to start."); bcastState(); }); }
-function audioStop(silent){ handover=false; lastPlayErr=""; try{audio.pause()}catch(e){} audio.removeAttribute("src");
+function audioStop(silent){ handover=false; lastPlayErr=""; try{audio.pause()}catch(e){} dropPrime();
   if(ownMine()) setOwner(false); P.mine=false; setPlaying(false); bcastState(); if(!silent) toast("Playback stopped."); }
 /* --- intents: available in every window --- */
-function claimAndPlay(m){ if(ownMine()){ audioStart(m); addRecent(m); return; }
+function claimAndPlay(m, fast){ if(ownMine()){ audioStart(m); addRecent(m); return; }
   setOwner(false);                                            // announce the takeover…
+  /* the wait is there to settle a race between windows that all want the stream. A window handing
+     it over on purpose is not a race, so that path goes at once (fast). */
   setTimeout(()=>{ const r=relOwner();                        // …then confirm we won it
     if(r && r.id!==CID){ setStation(m); addRecent(m); P.remoteKind=r.kind||""; setPlaying(true); return; }
-    audioStart(m); addRecent(m); }, 300 + Math.floor(Math.random()*180)); }
+    audioStart(m); addRecent(m); }, fast ? 40 : 300 + Math.floor(Math.random()*180)); }
 /* ---------- the bar steps aside while you search - on the screens where it is in the way ----
    On a tablet or a phone the bar covers the bottom of the results, so while the search box has
    something in it the bar is away and the list gets the room. Pressing play pins it back (that
@@ -846,9 +914,10 @@ function requestToggle(){ if(P.playing && ownMine()){ audioStop(); return; }
   if(P.cur) requestPlay(P.cur); else toast("Pick a station first — hit ▶ on any card."); }
 function requestStop(){ if(ownMine()) audioStop(); else { channel.post({type:"cmd",from:CID,cmd:"stop"}); P.mine=false; setPlaying(false); } }
 /* stop touching the audio without stopping the music: another window is taking over */
-function releaseToOther(kind){ try{audio.pause()}catch(e){} audio.removeAttribute("src");
+function releaseToOther(kind){
   if(ownMine()) ls.set("owner", { id:CID, kind:KIND, ts:Date.now()-60000, playing:P.playing, uuid:(P.cur&&P.cur.i)||null });
-  P.mine=false; P.remoteKind=kind||"pop"; setPlaying(P.playing); bcastState(); }
+  P.mine=false; P.remoteKind=kind||"pop"; setPlaying(P.playing); bcastState();
+  try{audio.pause()}catch(e){} warmFollower(); }         /* keep the buffer: we expect it back */
 /* hand playback over when a window is about to disappear (main tab closed / reloaded) */
 window.addEventListener("pagehide",()=>{
   /* Say goodbye out loud: the mini player watches this heartbeat to decide whether a page is
@@ -884,7 +953,7 @@ channel.on(m => {
         if(typeof m.vol==="number" && m.vol!==P.vol){ P.vol=m.vol; audio.volume=P.vol; setVolUI(); }
         if(m.M) setStation(m.M);
         P.remoteKind = m.kind || "";
-        setPlaying(!!m.playing); }
+        setPlaying(!!m.playing); warmFollower();   /* ready to take it back in a moment */ }
       break;
     case "cmd":                                          // only the audio owner executes commands
       if(ownMine()){
@@ -896,17 +965,17 @@ channel.on(m => {
     case "handoff":                                  // a window is leaving: whoever is left continues the stream
       if(m.to && m.to!==KIND) break;                 // addressed to another kind of window
       if(!ownMine() && m.M){ const hm=m.M, from=m.from;
-        setTimeout(()=>{ const r2=relOwner(); if(!r2 || r2.id===CID || r2.id===from) claimAndPlay(hm); }, 120); }
+        setTimeout(()=>{ const r2=relOwner(); if(!r2 || r2.id===CID || r2.id===from) claimAndPlay(hm, true); }, 40); }
       break;
-    case "handover":                                 // the mini player is adopting the stream: stand by, stay warm
+    case "handover":                                 // the mini player is adopting the stream: stand by, stay live
       if(ownMine() || audio.src){ handover=true; holdClaim=Date.now()+3000;
-        try{audio.pause()}catch(e){}
         ls.set("owner",{id:CID,kind:KIND,ts:Date.now()-60000,playing:true,uuid:(P.cur&&P.cur.i)||null});
-        P.mine=false; P.remoteKind="pop"; setPlaying(true); bcastState(); }
+        P.mine=false; P.remoteKind="pop"; setPlaying(true); bcastState();
+        try{audio.pause()}catch(e){} warmFollower(); }  /* its connection is the one that matters now */
       break;
-    case "tookover":                                 // it is really playing there: let the stream go
-      if(handover){ handover=false; try{audio.removeAttribute("src")}catch(e){}
-        P.mine=false; P.remoteKind="pop"; setPlaying(true); bcastState(); }
+    case "tookover":                                 // it is really playing there: go quiet, stay live
+      if(handover){ handover=false; try{audio.pause()}catch(e){}
+        P.mine=false; P.remoteKind="pop"; setPlaying(true); bcastState(); warmFollower(); }
       break;
     case "takeoverfailed":                           // it could not autoplay: the music must not be lost
       if(!ownMine() && (m.M || P.cur)){ handover=false; holdClaim=0;
@@ -927,11 +996,14 @@ channel.on(m => {
   }
 });
 /* keep the ownership stamp alive while we hold the audio */
-setInterval(()=>{ if(ownMine()) setOwner(P.playing); }, 2000);
+/* The stamp says "playing" only while this window's element really is playing. A window that has
+   merely reserved the stream (see claimAndPlay) must not look like the one making the sound, or the
+   window handing over would stop and go quiet while the taker is still connecting. */
+setInterval(()=>{ if(ownMine()) setOwner(P.playing && !audio.paused); }, 2000);
 /* if the owner window disappears, the next window keeps the music going
    (main tabs get first refusal, pop-outs wait ~2.6 s so audio prefers a real tab) */
 let resumeAt = 0, holdClaim = 0;                  // holdClaim: don't fight a takeover in progress
-setInterval(()=>{ const r=ownRec();
+setInterval(()=>{ warmFollower(); const r=ownRec();
   if(Date.now()<holdClaim || handover) return;
   if(!ownMine() && P.playing && !ownFresh(r)){
     if(!resumeAt) resumeAt = Date.now() + 400;
@@ -944,56 +1016,58 @@ $("#vol").addEventListener("input",e=>{ P.vol=+e.target.value; audio.volume=P.vo
   if(ownMine()) bcastState(); else channel.post({type:"cmd",from:CID,cmd:"vol",v:P.vol}); });
 $("#bPlay").addEventListener("click",requestToggle);
 $("#bStop").addEventListener("click",requestStop);
-$("#bName").addEventListener("click",()=>{ if(P.cur) showInfo(P.cur); });
+$("#bName").addEventListener("click",()=>{ if(P.cur) showInfo(P.cur); else togglePopOut(); });
 $("#btnBarSite").addEventListener("click",()=>{ if(P.cur&&P.cur.hp) window.open(P.cur.hp,"_blank","noopener"); });
 function syncPlayBtns(){ document.querySelectorAll("button.play").forEach(b=>b.classList.toggle("on",P.playing&&P.mine&&P.cur&&b.dataset.uuid===P.cur.i)); }
-/* pop-out window / dock — one button that opens, or hides when already open (in any tab) */
+/* pop-out window / dock — opened from the cover picture and from the idle MINI label on the strip
+   (the one button that used to do it is the 🎲 Random button now); it hides again when it is already
+   open, in this tab or another. */
 let winPop = null, dockOpen = false;
 const popAliveFresh = () => (Date.now() - (ls.get("pop-alive",0)||0)) < 5000;   // a pop-out exists somewhere
 const popOutOpen = () => !!((winPop && !winPop.closed) || dockOpen || popAliveFresh());
-function updatePopBtn(){ const b=$("#btnPop"); if(!b) return; const open=popOutOpen();
-  const ico=b.querySelector(".ico"), lbl=b.querySelector(".lbl");
-  if(ico && lbl){                       /* the label is a span so a phone can hide the word */
-    ico.textContent = open ? "⨯" : "⧉";
-    lbl.textContent = open ? "Hide pop-out" : "Pop-out";
-    b.setAttribute("aria-label", open ? "Hide the pop-out player" : "Open the pop-out mini player");
-  } else {
-    b.textContent = open ? "⨯ Hide pop-out" : "⧉ Pop-out";
+/* The two things on the strip that stand for the player: the cover picture, always, and the name
+   label while it is idle and says MINI. Both open the pop-out; the name goes back to being the
+   station's details link the moment a station is loaded. */
+function syncPopAffordance(){
+  const art=$("#bArt"), nm=$("#bName");
+  const open=popOutOpen();
+  const say = open ? "Hide the pop-out player — playback continues here"
+                   : "Open the pop-out mini player (it can keep playing after you close this page)";
+  if(art){
+    art.classList.add("art-pop");
+    art.setAttribute("role","button"); art.setAttribute("tabindex","0");
+    art.setAttribute("aria-label", open ? "Hide the pop-out player" : "Open the pop-out mini player");
+    art.title = say;
   }
-  b.title = open ? "Hide the pop-out player — playback continues here"
-                 : "Open the pop-out mini player (it can keep playing after you close this page)";
-  syncArtPop(); }
+  if(nm){
+    const idle = !P.cur;                 // idle = the label still reads MINI
+    nm.classList.toggle("nm-pop", idle);
+    if(idle){
+      nm.setAttribute("role","button"); nm.setAttribute("tabindex","0");
+      nm.setAttribute("aria-label", open ? "Hide the pop-out player" : "Open the pop-out mini player");
+      nm.title = say;
+    } else {
+      nm.removeAttribute("role"); nm.removeAttribute("tabindex");
+      nm.setAttribute("aria-label","Station details"); nm.title = "Station details";
+    }
+  }
+}
 
 /* The bar is fixed and its height is not a constant (the visualiser adds a row, a phone makes
    the controls a size smaller), so measure it and publish it as --barh: the page pads itself by
    that much, and the back-to-top button and the toasts sit above it instead of behind it. */
-/* Tablet and phone have no room for a labelled Pop-out button, so the artwork takes the job:
-   tapping the artwork sends the player to the mini-player window, which is what a listener
-   reaches for anyway. The 🎛 toggle takes the space the Pop-out button used to hold. The
-   artwork only behaves this way while the row is narrow, and it says so - role, label and a
-   focus ring - because an image that acts like a button has to read like one. */
+/* The cover picture is the pop-out control at every width (see syncPopAffordance): it is the thing
+   that represents the player, so it is the thing that sends it somewhere else. It keeps its role,
+   label and focus ring for the same reason - an image that acts like a button has to read like one. */
 function narrowBar(){ return !!(window.matchMedia && window.matchMedia("(max-width:900px)").matches); }
-function syncArtPop(){
-  const art=$("#bArt"); if(!art) return;
-  const narrow=narrowBar();
-  art.classList.toggle("art-pop",narrow);
-  if(narrow){
-    const open=popOutOpen();
-    art.setAttribute("role","button");
-    art.setAttribute("tabindex","0");
-    art.setAttribute("aria-label", open ? "Hide the pop-out player" : "Open the pop-out mini player");
-    art.title = open ? "Hide the pop-out player — playback continues here"
-                     : "Open the pop-out mini player (it can keep playing after you close this page)";
-  } else {
-    art.removeAttribute("role"); art.removeAttribute("tabindex");
-    art.removeAttribute("aria-label"); art.removeAttribute("title");
-  }
-}
-$("#bArt").addEventListener("click",()=>{ if(narrowBar()) togglePopOut(); });
+$("#bArt").addEventListener("click",()=>togglePopOut());
 $("#bArt").addEventListener("keydown",e=>{
-  if(narrowBar() && (e.key==="Enter" || e.key===" ")){ e.preventDefault(); togglePopOut(); }
+  if(e.key==="Enter" || e.key===" "){ e.preventDefault(); togglePopOut(); }
 });
-window.addEventListener("resize",syncArtPop);
+$("#bName").addEventListener("keydown",e=>{
+  if(!P.cur && (e.key==="Enter" || e.key===" ")){ e.preventDefault(); togglePopOut(); }
+});
+window.addEventListener("resize",syncPopAffordance);
 window.addEventListener("resize",syncBarAway);   /* widening past 900px returns the bar */
 
 function syncBarSpace(){
@@ -1003,14 +1077,14 @@ function syncBarSpace(){
   if(document.documentElement.style.getPropertyValue("--barh")!==now)
     document.documentElement.style.setProperty("--barh",now);
 }
-function dockShow(){ $("#dockFrame").src = "popout.html"; $("#dock").style.display="block"; dockOpen=true; updatePopBtn(); }
-function dockHide(){ $("#dock").style.display="none"; try{ $("#dockFrame").src = "about:blank"; }catch(e){} dockOpen=false; updatePopBtn(); }
+function dockShow(){ $("#dockFrame").src = "popout.html"; $("#dock").style.display="block"; dockOpen=true; syncPopAffordance(); }
+function dockHide(){ $("#dock").style.display="none"; try{ $("#dockFrame").src = "about:blank"; }catch(e){} dockOpen=false; syncPopAffordance(); }
 function togglePopOut(){
-  if(winPop && !winPop.closed){ try{ winPop.close(); }catch(e){} winPop=null; updatePopBtn();
+  if(winPop && !winPop.closed){ try{ winPop.close(); }catch(e){} winPop=null; syncPopAffordance();
     toast("Pop-out hidden — playback continues on this page."); return; }
   if(dockOpen){ dockHide(); return; }
   if(popAliveFresh()){ channel.post({type:"pop-hide"});           // it lives in another tab: ask it to close itself
-    updatePopBtn(); toast("Pop-out hidden — playback continues on this page."); return; }
+    syncPopAffordance(); toast("Pop-out hidden — playback continues on this page."); return; }
   let w = null;
   try { w = window.open("popout.html","rbgPop","popup=1,width=330,height=250,left="+Math.max(0,(screen.availWidth-340))+",top="+Math.max(0,(screen.availHeight-300))+",resizable=yes,scrollbars=no"); }
   catch(e){ w = null; }
@@ -1022,28 +1096,40 @@ function togglePopOut(){
     /* some blockers let the window open and then close it again — treat that as blocked too */
     setTimeout(()=>{ if(winPop && winPop.closed && !dockOpen){ winPop=null; dockShow(); popupBlockedNotice(); } }, 1100);
     toast("Mini player opened minimised — click it to expand.");
-    updatePopBtn(); }
+    syncPopAffordance(); }
   else { dockShow(); popupBlockedNotice(); }
 }
 function popupBlockedNotice(){
-  notice("🚫 <b>Your browser blocked the pop-up</b>, so the mini player is docked inside this page instead (bottom-right, resize it with S / M / L). To get it as a separate window you can drag anywhere, click your browser's <b>“pop-ups blocked”</b> icon in the address bar and choose <b>always allow pop-ups for this site</b>, then press ⧉ again.", "warn"); }
-$("#btnPop").addEventListener("click",togglePopOut);
-setInterval(updatePopBtn, 1000);
+  notice("🚫 <b>Your browser blocked the pop-up</b>, so the mini player is docked inside this page instead (bottom-right, resize it with S / M / L). To get it as a separate window you can drag anywhere, click your browser's <b>“pop-ups blocked”</b> icon in the address bar and choose <b>always allow pop-ups for this site</b>, then click the cover picture (or the MINI label) again.", "warn"); }
+/* 🎲 Random: play a station out of the list you are looking at. The search, the filters and the
+   Verified switch all still apply - it is a random pick out of what the count is counting - and it
+   prefers one this browser can actually play, because a random station that cannot start is not a
+   station at all. */
+$("#btnRandom").addEventListener("click", () => {
+  const rows = ALL.filter(s => matchAll(s, {}));
+  if(!rows.length){ toast("Nothing to pick from — loosen the filters first.", 5000); return; }
+  const can = rows.filter(playable);
+  const pool = can.length ? can : rows;
+  const s = pool[Math.floor(Math.random()*pool.length)];
+  toast("🎲 "+s.n, 4200);
+  doPlay(s);
+});
+setInterval(syncPopAffordance, 1000);
 window.addEventListener("message",e=>{ if(e.data==="rbg-pop-closed"){
-  /* the mini player has left - a window closed, or a docked one asked to fold away. Either way
-     the button goes back to saying "Pop out" and the dock, if that is how it was showing, goes. */
-  winPop=null; if(dockOpen) dockHide(); updatePopBtn(); } });
+  /* the mini player has left - a window closed, or a docked one asked to fold away. Either way the
+     cover picture goes back to offering the pop-out, and the dock goes with it. */
+  winPop=null; if(dockOpen) dockHide(); syncPopAffordance(); } });
 /* dock controls */
 $("#dockClose").addEventListener("click",dockHide);
 $("#dockS").onclick=()=>{const d=$("#dock");d.classList.remove("med","large");d.classList.add("small")};
 $("#dockM").onclick=()=>{const d=$("#dock");d.classList.remove("small","large");d.classList.add("med")};
 $("#dockL").onclick=()=>{const d=$("#dock");d.classList.remove("small","med");d.classList.add("large")};
 /* ===== collapsible interface: sections, panel, header, back-to-top, shortcuts ===== */
-/* ===== the two toolbar pull-downs: Genre and Saved =====
-   Both float over the list (see .menu), so opening one never pushes a card down. Each closes on
-   Escape, on a click outside, and at the moment the toolbar is carried off by a scroll: a menu
-   riding off the top of the screen with the gesture that opened it helps nobody. */
-const MENUS = { genre:["#btnGenre","#genreMenu"], saved:["#btnSaved","#savedMenu"] };
+/* ===== the Saved pull-down (the only one left: the genre panel is folded into the search field) =====
+   It floats over the list (see .menu), so opening it never pushes a card down. It closes on Escape
+   and on a click outside - but NOT on a scroll: while it is open the toolbar is pinned, so a phone
+   can scroll the results underneath and still use the panel (see the scroll handler). */
+const MENUS = { saved:["#btnSaved","#savedMenu"] };
 let menuName = "";
 const menuOpen = name => !!(name && !$(MENUS[name][1]).hidden);
 function openMenu(name){
@@ -1052,21 +1138,51 @@ function openMenu(name){
     const on = (k === name); panel.hidden = !on;
     b.classList.toggle("on", on); b.setAttribute("aria-expanded", String(on)); });
   menuName = name;
-  if(name === "genre"){ renderTagRow(); renderLangRow(); }
   if(name === "saved") renderSavedList();
+  /* One history entry per open menu, so the platform's back gesture is "close this panel" rather
+     than "leave the site" - and it is given straight back when the panel closes any other way. */
+  if(name) pushMenuHistory(); else dropMenuHistory();
 }
 Object.keys(MENUS).forEach(k => $(MENUS[k][0]).addEventListener("click", e => {
   e.stopPropagation(); openMenu(menuOpen(k) ? "" : k); }));
-/* Reading the click's PATH rather than its target: a chip press re-renders the menu under the
-   finger, which detaches the element the click came from, and a detached target matches nothing -
-   the menu would shut the moment you used it. */
+/* Reading the click's PATH rather than its target: a press can re-render the panel under the finger
+   (a saved row's play / drop does), which detaches the element the click came from - and a detached
+   target matches nothing. The path is captured at dispatch, so it still names the panel. */
 document.addEventListener("click", e => {
   const path = (e.composedPath && e.composedPath()) || [];
-  const inside = path.some(n => n.classList && (n.classList.contains("menu") || n.classList.contains("tbacts")));
+  const inside = path.some(n => n.classList && n.classList.contains("menu"));
   if(menuName && !inside) openMenu("");
 });
 document.addEventListener("keydown", e => {
   if(e.key === "Escape" && menuName){ const b=$(MENUS[menuName][0]); openMenu(""); b.focus(); } });
+/* Closing a panel by gesture, which is how a phone expects to get out of one - and the outcome is
+   the same as tapping the toggle again: the panel goes, the page stays exactly where it was.
+     * the platform's back gesture / the browser's back button: one history entry is pushed while a
+       panel is open, so the first back closes the panel instead of leaving the site. Nothing else
+       on this page listens for popstate, and the state hash is written with replaceState, so the
+       entry is invisible. file:// origins refuse pushState outright, which is why it is wrapped -
+       there the sideways swipe below still works.
+     * a sideways swipe across the panel: the two routes must never both fire, so the swipe waits a
+       moment and gives up if the panel has already gone (the platform gesture is quicker). */
+let menuHist = false, menuBacks = 0;
+function pushMenuHistory(){ if(menuHist) return; try{ history.pushState({ menu:1 }, ""); menuHist = true; }catch(e){ menuHist = false; } }
+function dropMenuHistory(){ if(!menuHist) return; menuHist = false;
+  /* Our own tidy-up pop is counted, so it can never be mistaken for the user's back gesture - a
+     double-tap on the toggle (close, open again) would otherwise shut the panel it just reopened. */
+  menuBacks++; try{ history.back(); }catch(e){ menuBacks--; } }
+window.addEventListener("popstate", () => {
+  if(menuBacks > 0){ menuBacks--; return; }
+  if(menuName){ menuHist = false; openMenu(""); } });
+let swipeFrom = null;
+document.addEventListener("touchstart", e => { const t = e.touches && e.touches[0];
+  swipeFrom = (menuName && t) ? { x:t.clientX, y:t.clientY } : null; }, { passive:true });
+document.addEventListener("touchend", e => { const s = swipeFrom, t = e.changedTouches && e.changedTouches[0];
+  swipeFrom = null;
+  if(!s || !t || !menuName) return;
+  const dx = t.clientX - s.x, dy = t.clientY - s.y;
+  if(dx < 60 || Math.abs(dx) <= Math.abs(dy) * 1.5) return;     // a rightward flick, not a scroll
+  const was = menuName;
+  setTimeout(() => { if(menuName === was) openMenu(""); }, 120); }, { passive:true });
 /* The header no longer collapses. It is always shown at its full size, and the compact state
    is unreachable from anywhere - no button, no shortcut - so any value an older version left
    in storage is cleared here rather than trusted. */
@@ -1078,7 +1194,10 @@ window.addEventListener("scroll", () => $("#toTop").classList.toggle("show", win
    comes back from the left carrying the SEARCH FIELD ONLY (body.quick); the selects, the two
    pull-downs and Reset belong to the top of the page, where the whole toolbar sits in its own
    place. Where "the top" ends is the toolbar's place in the document, measured rather than
-   guessed - the header above it is a different height on every screen. */
+   guessed - the header above it is a different height on every screen.
+   ONE EXCEPTION: while a pull-down is open the toolbar is pinned. The picker is a working surface
+   (a type-ahead plus a list to scroll), and a menu that leaves the screen the moment you look at
+   the results below it is a menu you cannot use - he asked for it to stay put on a phone. */
 const CHROME_STILL_MS = 1500;     // stillness after the finger leaves the glass before it returns
 let hideTimer=null, lastScrollY=0, toolbarTop=0;
 function measureChrome(){ const tb=$(".toolbar"); if(!tb) return;
@@ -1100,42 +1219,18 @@ window.addEventListener("scroll", () => {
   const reveal = () => { clearTimeout(hideTimer); document.body.classList.remove("scrolling"); };
   if(window.innerWidth > 900) return reveal();                 // a desktop keeps its toolbar
   if(!moved) return;                                           // a scroll event that went nowhere
+  if(menuName) return reveal();                                // a pull-down is open: the toolbar stays
+                                                               // pinned and the menu stays usable
   if(y <= toolbarTop){ document.body.classList.remove("quick"); return reveal(); }   // the top: all of it
   if(document.activeElement === $("#q")) return reveal();      // typing moves the page by itself
-  if(menuName) openMenu("");                                   // a menu must not ride off with the gesture
   document.body.classList.add("quick");                        // what comes back is the search field
   if(!document.body.classList.contains("scrolling")) document.body.classList.add("scrolling");
   clearTimeout(hideTimer);
   hideTimer = setTimeout(() => document.body.classList.remove("scrolling"), CHROME_STILL_MS);
 }, { passive:true });
-/* active-filter chips: see and remove any filter from one place, on one line under the toolbar */
-function renderActiveFilters(){
-  const parts=[];
-  if(state.cc) parts.push(["c", (ccName[state.cc]||state.cc), flag(state.cc)]);
-  state.tags.forEach(t => parts.push(["t", t, "🏷"]));
-  if(state.lang) parts.push(["l", state.lang, "🗣"]);
-  if(state.codec) parts.push(["x", state.codec, "🎚"]);
-  if(state.bit) parts.push(["b", "≥"+state.bit+"k", "◍"]);
-  if(state.q) parts.push(["q", "“"+state.q+"”", "🔎"]);
-  $("#fActive").innerHTML = parts.map(([k,v,ic]) =>
-    '<button class="fchip" data-fk="'+k+'" data-fv="'+esc(v)+'" title="Remove this filter">'+ic+" "+esc(v)+" ✕</button>").join("");
-  $("#chipRow").hidden = !parts.length;
-  $("#btnClearF").hidden = !parts.length;
-}
-$("#fActive").addEventListener("click", e => {
-  const b=e.target.closest(".fchip"); if(!b) return;
-  const k=b.dataset.fk, v=b.dataset.fv;
-  if(k==="c"){ state.cc=""; $("#selCountry").value=""; }
-  else if(k==="t"){ state.tags=state.tags.filter(t => esc(t) !== v); }
-  else if(k==="l"){ state.lang=""; }
-  else if(k==="x"){ state.codec=""; $("#selCodec").value=""; }
-  else if(k==="b"){ state.bit=0; $("#selBit").value="0"; }
-  else if(k==="q"){ state.q=""; $("#q").value=""; }
-  state.page=1; apply(); writeHash();
-});
-function clearFilters(){ Object.assign(state,{q:"",cc:"",lang:"",codec:"",bit:0,tags:[],page:1,favOnly:false});
-  $("#q").value=""; $("#selCountry").value=""; $("#selCodec").value=""; $("#selBit").value="0"; apply(); writeHash(); }
-$("#btnClearF").addEventListener("click", clearFilters);
+/* There is no filter read-out on this page and no "clear filters": a search is a search, and it
+   must never leave a little "dub ✕" chip behind under the toolbar. What a control is set to is
+   visible on the control itself - the select shows its value, Reset puts everything back. */
 /* ⭐ My stations, listed: the Saved pull-down shows what you kept, not just a filter over the list.
    Rows carry the same three things a card does - play, details, keep/drop - so nothing is lost by
    not being in the grid. */
@@ -1173,15 +1268,15 @@ function refreshFavUI(){
   $("#favHead").textContent = n ? n+" saved" : "none yet";
   if(menuOpen("saved")) renderSavedList(); }
 $("#btnSavedOnly").addEventListener("click", () => { state.favOnly=!state.favOnly; state.page=1; apply(); writeHash(); refreshFavUI(); });
-/* ✅ Plays here: the same filter as before, now a switch in the toolbar rather than a panel chip.
-   It is ON by default - a list of stations this browser cannot play is a list of dead ends. */
+/* ✅ Verified: the same filter as before, now a small switch inside the search field rather than a
+   panel chip. It is ON by default - a list of stations this browser cannot play is a list of dead ends. */
 function refreshPlayableUI(){ const b=$("#btnPlayable");
   b.classList.toggle("on", !!state.playOnly); b.setAttribute("aria-pressed", String(!!state.playOnly));
   b.title = state.playOnly
-    ? `Only stations this browser can play are listed (${fmt(unplayableCount())} hidden — click to show every station)`
-    : "Showing every station, including ones this browser can't play — click to filter"; }
+    ? `Verified: only stations this browser can play are listed (${fmt(unplayableCount())} hidden — click to show every station)`
+    : "Showing every station, including ones this browser can't play — click to list only the verified ones"; }
 $("#btnPlayable").addEventListener("click", () => { state.playOnly=!state.playOnly; ls.set("playonly", state.playOnly); state.page=1; apply(); writeHash();
-  toast(state.playOnly ? "Showing only stations this browser can play." : "Showing every station — some can't play in this browser.", 5200); });
+  toast(state.playOnly ? "Verified: showing only stations this browser can play." : "Showing every station — some can't play in this browser.", 5200); });
 
 /* ===== decorative visualiser: 5 styles, cycled by the 🎛 button ===== */
 /* The five looks live in viz.js, which the mini player loads too. If it did not load at all,
@@ -1214,7 +1309,7 @@ const vizRestore=ls.get("viz",0); if(vizRestore>0) vizSet(true,Math.min(vizResto
 
 /* ============================== explorer ============================== */
 const state = { q:"", cc:"", lang:"", codec:"", bit:0, sort:"k", tags:[], page:1, favOnly:false, playOnly: ls.get("playonly", true) };
-const PSZ=240; let visibleTags=24;
+const PSZ=240;
 function matchAll(s,excl){
   if(state.favOnly && !favSet.has(s.i)) return false;
   if(state.playOnly && !playable(s)) return false;      // default: only stations this browser can really play
@@ -1225,12 +1320,9 @@ function matchAll(s,excl){
   if(!excl.tags&&state.tags.length){const t=new Set(tokens(s.t));for(const tg of state.tags)if(!t.has(tg))return false}
   if(!excl.q&&state.q){const hay=(s.n+" "+countryOf(s)+" "+(s.s||"")+" "+(s.l||"")+" "+(s.t||"")+" "+(s.x||"")).toLowerCase();if(!hay.includes(state.q))return false}
   return true }
-const tagPoolRows=()=>ALL.filter(s=>matchAll(s,{tags:true}));
-function tagCounts(rows){const c=new Map();for(const s of rows)for(const t of tokens(s.t))c.set(t,(c.get(t)||0)+1);return[...c.entries()].sort((a,b)=>b[1]-a[1])}
-function langCounts(rows){const c=new Map();for(const s of rows){const l=normLang(s.l);if(l)c.set(l,(c.get(l)||0)+1)}return[...c.entries()].sort((a,b)=>b[1]-a[1])}
 function buildStatic(){
   $("#spinN").textContent=fmt(ALL.length);
-  $("#selCountry").insertAdjacentHTML("beforeend",'<option value="">🌍 All countries</option>');
+  $("#selCountry").insertAdjacentHTML("beforeend",'<option value="">Country</option>');
   META.countries.forEach(c=>$("#selCountry").insertAdjacentHTML("beforeend",`<option value="${esc(c.cc)}">${flag(c.cc)} ${esc(c.c)} (${fmt(c.n)})</option>`));
   META.codecs.slice(0,12).forEach(x=>$("#selCodec").insertAdjacentHTML("beforeend",`<option value="${esc(x.x)}">${esc(x.x)} (${fmt(x.n)})</option>`));
   const L=ls.get("last",null); if(L&&L.m){ setStation(L.m); setPlaying(false); P.owner="main"; }
@@ -1238,21 +1330,8 @@ function buildStatic(){
   syncBarSpace();
   if(window.ResizeObserver) new ResizeObserver(syncBarSpace).observe($("#bar"));
   window.addEventListener("resize",syncBarSpace);
-  syncArtPop();
+  syncPopAffordance();
 }
-function renderTagRow(){ const counts=tagCounts(tagPoolRows()); const shown=counts.slice(0,visibleTags),rest=counts.length-shown.length;
-  let h='<span class="lbl">Genre</span>'+shown.map(([t,n],i)=>`<button class="ftag${state.tags.includes(t)?" on":""}" data-tag="${esc(t)}">${esc(t)}<span class="n">${fmt(n)}</span></button>`).join("");
-  if(rest>0)h+=`<button class="more">+${rest} more</button>`; if(visibleTags>24)h+='<button class="less">show fewer</button>';
-  if(!counts.length)h+='<span style="color:var(--mut);font-size:12px">no genres in this scope</span>';
-  $("#tagRow").innerHTML=h;
-  $("#genreCount").textContent = counts.length ? counts.length+" in this scope" : ""; }
-function renderLangRow(){ const counts=langCounts(tagPoolRows());
-  if(!counts.length){ $("#langRow").classList.add("sec-empty"); return }
-  $("#langRow").classList.remove("sec-empty");
-  let h='<span class="lbl">Language</span><select id="dynLang" style="max-width:220px"><option value="">Any language</option>';
-  counts.slice(0,120).forEach(([l,n])=>{h+=`<option value="${esc(l)}"${state.lang===l?" selected":""}>${esc(l)} (${fmt(n)})</option>`});
-  h+="</select>"; $("#langRow").innerHTML=h;
-  $("#dynLang").onchange=e=>{state.lang=e.target.value;state.page=1;apply()} }
 const TAGCLS=["t0","t1","t2","t3","t4"];
 function cardHTML(s,oi){
   const pk=playKind(s);
@@ -1299,7 +1378,6 @@ document.addEventListener("keydown",e=>{ const t=e.target, typing = t && (t.tagN
   if(e.key==="Escape"){ $("#modal").style.display="none"; return; }
   if(typing || e.metaKey || e.ctrlKey || e.altKey) return;
   if(e.key==="/"){ e.preventDefault(); $("#q").focus(); }
-  else if(e.key==="g"||e.key==="G"){ openMenu(menuOpen("genre") ? "" : "genre"); }
   else if(e.key==="v"||e.key==="V"){ $("#btnViz").click(); }
   else if(e.key==="s"||e.key==="S"){ openMenu(menuOpen("saved") ? "" : "saved"); } });
 function pagerHTML(total){ const pages=Math.max(1,Math.ceil(total/PSZ)); if(state.page>pages)state.page=pages;
@@ -1331,20 +1409,19 @@ function apply(){ const t0=performance.now();
   rows.sort((a,b)=>cmpx(a[0],b[0])); const total=rows.length;
   const pages=Math.max(1,Math.ceil(total/PSZ)); if(state.page>pages)state.page=pages;
   const slice=rows.slice((state.page-1)*PSZ,state.page*PSZ);
-  const crumb=[state.cc?(ccName[state.cc]||state.cc)+" ("+fmt(total)+")":null,state.lang?state.lang:null,state.codec?state.codec:null].filter(Boolean).join(" · ");
-  $("#cntLine").innerHTML=`<span style="margin:0">${crumb?`<b>${esc(crumb)}</b> · `:""}<b>${fmt(total)}</b> stations · page <b>${state.page}</b>/${fmt(pages)} · ${fmt((state.page-1)*PSZ+1)}–${fmt(Math.min(state.page*PSZ,total))}${state.tags.length?" · genre: "+state.tags.map(esc).join(", "):""}${state.playOnly&&unplayableCount()?` · <span title="hidden because this browser can't play them">${fmt(unplayableCount())} hidden</span>`:""}</span>`;
+  /* The count line is the number of stations the list is showing and nothing else - no page number,
+     no "1-240", no "N hidden". The Verified switch beside it says which catalogue that number is
+     counted from, so the read-out never has to explain itself. */
+  $("#cntLine").innerHTML=`<span style="margin:0"><b>${fmt(total)}</b> stations</span>`;
   refreshPlayableUI();
   const ph=pagerHTML(total); $("#pagerTop").innerHTML=ph; $("#pagerBottom").innerHTML=ph; bindPager();
   $("#list").innerHTML=slice.map(([s,oi])=>cardHTML(s,oi)).join("");
-  /* the genre chips are rendered only while their menu is open: a closed menu is not worth the
-     tag counts of the whole catalogue on every keystroke */
-  if(menuOpen("genre")){ renderTagRow(); renderLangRow(); }
-  renderActiveFilters(); refreshFavUI(); window.__perf=performance.now()-t0; document.body.dataset.ready="1"; }
+  refreshFavUI(); window.__perf=performance.now()-t0; document.body.dataset.ready="1"; }
 function readHash(){ const h=new URLSearchParams(location.hash.slice(1));
   state.q=h.get("q")||"";state.cc=h.get("c")||"";state.lang=h.get("l")||"";state.codec=h.get("x")||"";state.bit=+h.get("b")||0;state.sort=h.get("s")||"k";
   state.tags=(h.get("t")||"").split(",").filter(Boolean);state.page=+h.get("p")||1;state.favOnly=h.get("f")==="1";
   if(h.has("pl")) state.playOnly = h.get("pl")!=="0";     // deep links can force the full list
-  $("#q").value=state.q;$("#selCountry").value=state.cc;$("#selCodec").value=state.codec;$("#selBit").value=String(state.bit);$("#selSort").value=state.sort }
+  $("#q").value=state.q;$("#selCountry").value=state.cc;$("#selCodec").value=state.codec;$("#selBit").value=String(state.bit) }
 let ht; function writeHash(){ clearTimeout(ht); ht=setTimeout(()=>{ try{ const h=new URLSearchParams();
   if(state.q)h.set("q",state.q);if(state.cc)h.set("c",state.cc);if(state.lang)h.set("l",state.lang);if(state.codec)h.set("x",state.codec);
   if(state.bit)h.set("b",state.bit);if(state.sort!=="k")h.set("s",state.sort);if(state.tags.length)h.set("t",state.tags.join(","));if(state.page>1)h.set("p",state.page);if(state.favOnly)h.set("f","1");
@@ -1372,7 +1449,9 @@ $("#q").addEventListener("input",()=>{state.q=$("#q").value.trim().toLowerCase()
    Both routes are handled - the Enter/Go key on the keyboard, and the search event that fires
    when it is committed (the magnifying glass, the keyboard's Go, or the field's own ✕).
    Blurring is what dismisses it on both Android and iOS. */
-function endSearchTyping(){ const q=$("#q"); if(!q) return;
+/* Every caller names its own field - a listener that passes the EVENT here would blur an Event
+   object, which is how the "committing via the search event" checks broke for a minute. */
+function endSearchTyping(field){ const q=field || $("#q"); if(!q || !q.blur) return;
   q.blur();
   /* Android and desktop close the keyboard on blur. iOS sometimes does not, and the documented
      way to make it is to take the field out of play for a moment: a readonly field cannot be
@@ -1387,21 +1466,13 @@ function endSearchTyping(){ const q=$("#q"); if(!q) return;
      Nothing listens in a plain browser. */
   try{ document.dispatchEvent(new CustomEvent("wr-search-commit")); }catch(e){}
 }
-$("#q").addEventListener("keydown",e=>{ if(e.key==="Enter"||e.keyCode===13){ e.preventDefault(); endSearchTyping(); } });
-$("#q").addEventListener("search",endSearchTyping);
+$("#q").addEventListener("keydown",e=>{ if(e.key==="Enter"||e.keyCode===13){ e.preventDefault(); endSearchTyping($("#q")); } });
+$("#q").addEventListener("search",()=>endSearchTyping($("#q")));
 $("#selCountry").onchange=e=>{state.cc=e.target.value;state.page=1;apply();writeHash()};
 $("#selCodec").onchange=e=>{state.codec=e.target.value;queueApply()};
 $("#selBit").onchange=e=>{state.bit=+e.target.value;queueApply()};
-$("#selSort").onchange=e=>{state.sort=e.target.value;apply();writeHash()};
 $("#btnReset").onclick=()=>{Object.assign(state,{q:"",cc:"",lang:"",codec:"",bit:0,sort:"k",tags:[],page:1});
-  $("#q").value="";$("#selCountry").value="";$("#selCodec").value="";$("#selBit").value="0";$("#selSort").value="k";apply();writeHash()};
-$("#tagRow").addEventListener("click",e=>{
-  /* "+N more" / "show fewer" are plain links, not chips, so they answer first - and they answered
-     to nothing at all until this was split out (closest(".ftag") is null for them). */
-  const mx=e.target.closest(".more,.less");
-  if(mx){ visibleTags = mx.classList.contains("more") ? visibleTags+40 : 24; renderTagRow(); return }
-  const b=e.target.closest(".ftag");if(!b)return;
-  const t=b.dataset.tag;const i=state.tags.indexOf(t);if(i>=0)state.tags.splice(i,1);else state.tags.push(t);state.page=1;apply();writeHash()});
+  $("#q").value="";$("#selCountry").value="";$("#selCodec").value="";$("#selBit").value="0";apply();writeHash()};
 $("#list").addEventListener("click",e=>{const b=e.target.closest("[data-act][data-i]");if(!b)return;const s=ALL[+b.dataset.i];const act=b.dataset.act;
   if(act==="play")doPlay(s);
   else if(act==="fav"){ toggleFav(s); b.classList.toggle("on",favSet.has(s.i)); b.textContent=favSet.has(s.i)?"★":"☆"; }
@@ -1413,21 +1484,22 @@ channel.post({type:"hello"});
 window.__dbg={ ALL:()=>ALL.length, state:()=>({...state}), player:()=>({cur:P.cur?P.cur.n:null,playing:P.playing,vol:P.vol,mine:P.mine}),
   caps:()=>({...CAP}), playKind:(i)=>playKind(ALL[i]), unplayable:()=>unplayableCount(), playableCount:()=>ALL.length-unplayableCount(),
   notice:()=>({shown:document.querySelector("#notice").classList.contains("show"), text:document.querySelector("#notice").textContent.slice(0,140)}),
-  audioState:()=>({paused:audio.paused,src:!!audio.src,err:lastPlayErr,handover:handover}),
-  playFirst:()=>doPlay(ALL[0]), stop:()=>requestStop(), openPop:togglePopOut, popOpen:()=>popOutOpen(), popBtn:()=>$("#btnPop").textContent.trim(),
+  audioState:()=>({paused:audio.paused,src:!!audio.src,err:lastPlayErr,handover:handover,
+    ready:audio.readyState, primed:primedFor, t:+audio.currentTime.toFixed(2)}),
+  playFirst:()=>doPlay(ALL[0]), stop:()=>requestStop(), openPop:togglePopOut, popOpen:()=>popOutOpen(),
+  randBtn:()=>$("#btnRandom").textContent.trim(),
+  pickRandom:()=>$("#btnRandom").click(),
+  curKind:()=>P.cur?playKind(P.cur):null,
   stream:()=>({mine:P.mine, playing:P.playing, hasSrc:!!audio.src, cur:P.cur&&P.cur.n,
     owner:(relOwner()||{}).kind||null, vol:P.vol}),
   viz:()=>({on:vizOn,style:VIZSTYLES[vizStyle],idx:vizStyle}),
   fav:()=>({count:favSet.size,only:state.favOnly,btn:$("#btnSaved").textContent.trim(),
     rows:document.querySelectorAll("#savedList .srow").length}), toggleFavFirst:()=>toggleFav(ALL[0]),
-  menus:()=>({open:menuName,genre:menuOpen("genre"),saved:menuOpen("saved"),
-    genres:document.querySelectorAll("#tagRow .ftag").length,
-    langs:document.querySelectorAll("#langRow option").length}),
+  menus:()=>({open:menuName,saved:menuOpen("saved")}),
   playable:()=>({on:!!state.playOnly,label:$("#btnPlayable").textContent.trim()}),
   ui:()=>({playOnly:!!state.playOnly,favOnly:!!state.favOnly,headerCompact:false,
-    activeChips:document.querySelectorAll("#fActive .fchip").length,
-    chipRow:!$("#chipRow").hidden,toTop:document.querySelector("#toTop").classList.contains("show")}),
-  clearFilters };
+    filters:document.querySelectorAll(".fchip,#fActive,#chipRow,#btnClearF,#selSort").length,
+    toTop:document.querySelector("#toTop").classList.contains("show")}) };
 </script>
 </body>
 </html>
