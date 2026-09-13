@@ -933,7 +933,6 @@ const recents = () => ls.get("rec",[]);
 const metaMap = () => ls.get("meta",{});
 function addRecent(m){ const r=recents().filter(u=>u!==m.i); r.unshift(m.i); ls.set("rec",r.slice(0,24));
   const mm=metaMap(); mm[m.i]=m; ls.set("meta",mm); channel.post({type:"recupd"}); }
-function recentList(){ const mm=metaMap(); return recents().map(u=>mm[u]).filter(Boolean); }
 /* favourites — "My stations" */
 let favSet = new Set(ls.get("fav",[]));
 const favList = () => ls.get("fav",[]);
@@ -946,7 +945,6 @@ function toggleFav(s){ if(favSet.has(s.i)){ rmFav(s.i); toast("Removed from My s
 /* ======================= channel protocol ======================= */
 channel.on(m => {
   if(m.from===CID) return;
-  window.__msgs = window.__msgs || {}; window.__msgs[m.type] = (window.__msgs[m.type]||0) + 1;   // test/diagnostic counter
   switch(m.type){
     case "hello": if(ownMine()) bcastState(); break;
     case "state": if(!ownMine()){                       // mirror the owner; never touch our own audio
