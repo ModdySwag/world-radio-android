@@ -68,14 +68,21 @@ header .spraytag{margin-left:auto;transform:rotate(1.6deg);font-weight:800;text-
   .toolbar .btn{padding:8px 10px;font-size:12.5px;white-space:nowrap}
 }
 /* Scrolling is reading time: the toolbar and the filter panel get out of the way so more of the
-   list fits, and come back the moment the scrolling stops. Phone and tablet only - on a desktop
-   the toolbar shares a line with the search field and there is nothing to win. */
+   list fits. Either direction counts - up hides it just like down - and it only returns once the
+   page has been still for a moment, then fades in slowly instead of snapping back.
+   Phone and tablet only - on a desktop the toolbar shares a line with the search field and there
+   is nothing to win. */
 @media(max-width:900px){
-  .toolbar,.facets{transition:transform .18s ease,opacity .16s ease}
-  body.scrolling .toolbar{transform:translateY(-130%);opacity:0;pointer-events:none}
-  body.scrolling .facets{opacity:0;pointer-events:none}
+  /* The transition that runs is the one on the state being entered, so the slow fade lives on the
+     resting state (revealing) and the quick one on body.scrolling (hiding). */
+  .toolbar,.facets{transition:transform .75s cubic-bezier(.22,.61,.36,1),opacity .75s ease}
+  body.scrolling .toolbar{transition:transform .2s ease,opacity .18s ease;
+    transform:translateY(-130%);opacity:0;pointer-events:none}
+  body.scrolling .facets{transition:opacity .2s ease;opacity:0;pointer-events:none}
 }
-@media (prefers-reduced-motion:reduce){ .toolbar,.facets{transition:none} }
+@media (prefers-reduced-motion:reduce){
+  .toolbar,.facets,body.scrolling .toolbar,body.scrolling .facets{transition:none}
+}
 @media(max-width:365px){
   header .spraytag{font-size:8.5px;letter-spacing:.2px;padding:4px 7px}
   .wr-dl-btn{font-size:10px;padding:6px 8px}
@@ -990,18 +997,24 @@ $("#hdrHead").classList.remove("compact");
 $("#toTop").addEventListener("click", () => window.scrollTo({ top:0, behavior:"smooth" }));
 window.addEventListener("scroll", () => $("#toTop").classList.toggle("show", window.scrollY > 600), { passive:true });
 /* Type into the search field and the page moves a little by itself (the keyboard, the list
-   re-rendering). That is not reading time, so the chrome stays put while the field has focus. */
+   re-rendering). That is not reading time, so the chrome stays put while the field has focus.
+   Scrolling either way hides it - on a phone or tablet you are reading, not hunting for the
+   search box, and going back up is only looking for it once you have actually arrived. It comes
+   back after the page has been still for CHROME_STILL_MS, and the CSS fades it in over ~.75s. */
+const CHROME_STILL_MS = 2500;     // stillness after the finger leaves the glass before it returns
 let hideTimer=null, lastScrollY=0;
 window.addEventListener("scroll", () => {
-  const y = window.scrollY, down = y > lastScrollY + 4;
+  const y = window.scrollY;
+  const moved = Math.abs(y - lastScrollY) > 4;                 // up counts now, not only down
   lastScrollY = y;
   const reveal = () => { clearTimeout(hideTimer); document.body.classList.remove("scrolling"); };
   if(window.innerWidth > 900) return reveal();                 // desktop keeps it
-  if(!down) return reveal();                                   // going back up is looking for it
+  if(!moved) return;                                           // a scroll event that went nowhere
+  if(y < 30) return reveal();                                  // the top: nothing to win, so show it
   if(document.activeElement === $("#q")) return reveal();      // typing moves the page by itself
   if(!document.body.classList.contains("scrolling")) document.body.classList.add("scrolling");
   clearTimeout(hideTimer);
-  hideTimer = setTimeout(() => document.body.classList.remove("scrolling"), 260);
+  hideTimer = setTimeout(() => document.body.classList.remove("scrolling"), CHROME_STILL_MS);
 }, { passive:true });
 /* active-filter chips: see and remove any filter from one place */
 function renderActiveFilters(){
