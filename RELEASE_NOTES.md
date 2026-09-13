@@ -27,6 +27,9 @@ moddys.net serves.
 - `tools/shim_harness.py` drives the real shell over both bridges: 76 checks, 0 failed - and the
   same harness under WebKit, the engine iOS runs: 76 checks, 0 failed
 - the bundled `index.html` is byte-identical to the one this release puts on the site
+- `tools/apk_identity.py` on the published APK: versionName `1.6.7`, versionCode 15, no `.debug`
+  suffix, the same signing certificate as every release before it, and the bundled page
+  byte-identical to the site's
 
 ## Install
 
