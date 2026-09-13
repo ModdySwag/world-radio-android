@@ -267,7 +267,11 @@ select:focus{border-color:var(--purp)}
 a{color:var(--cyan);text-decoration:none}a:hover{text-decoration:underline}
 
 /* player dock (bottom) */
-#dock{position:fixed;bottom:0;left:0;right:0;z-index:40;display:none}
+/* It sits ABOVE the bar rather than behind it: the bar is fixed across the same edge and is taller
+   than the dock's own 8px inset, so a dock pinned to the window's bottom had its lower third - the
+   volume slider's row and the footer - painted over by the bar. --barh is the bar's measured
+   height (syncBarSpace), and it is 0px while the bar is away. */
+#dock{position:fixed;bottom:var(--barh,0px);left:0;right:0;z-index:40;display:none}
 #dock .wrap-dock{display:flex;gap:0;align-items:stretch;justify-content:center;padding:8px 12px;pointer-events:none}
 #dock .dwin{pointer-events:auto;background:rgba(13,14,22,.96);border:2px solid var(--purp);border-bottom:none;border-radius:16px 16px 0 0;
   box-shadow:0 -6px 30px rgba(0,0,0,.55);width:min(430px,100%);overflow:hidden}
@@ -1058,6 +1062,19 @@ function syncPopAffordance(){
    that represents the player, so it is the thing that sends it somewhere else. It keeps its role,
    label and focus ring for the same reason - an image that acts like a button has to read like one. */
 function narrowBar(){ return !!(window.matchMedia && window.matchMedia("(max-width:900px)").matches); }
+/* Where the player goes when the cover picture (or the idle MINI label) is pressed.
+   A real pop-up WINDOW exists on a desktop, and that is what the site asks for. A mobile browser
+   has none: Chrome on Android and Safari on iOS ignore the size a pop-up asks for and open it as a
+   whole TAB, and the player is written to open minimised in a window - so a tablet ended up looking
+   at a full page with a transport row and a "click anywhere to expand" note on it. Those browsers
+   fall back to the docked player whenever a pop-up is refused anyway, and the dock is the shape a
+   phone already knows, so on a mobile browser the player is docked in the page instead.
+   Desktop browsers keep their window, touch screen or not. */
+function mobileBrowser(){
+  const ua = navigator.userAgent || "";
+  if(/Android|iPhone|iPad|iPod|Mobile/i.test(ua)) return true;
+  return /Macintosh/.test(ua) && (navigator.maxTouchPoints||0) > 1;   // iPadOS reports itself as a Mac
+}
 $("#bArt").addEventListener("click",()=>togglePopOut());
 $("#bArt").addEventListener("keydown",e=>{
   if(e.key==="Enter" || e.key===" "){ e.preventDefault(); togglePopOut(); }
@@ -1083,6 +1100,7 @@ function togglePopOut(){
   if(dockOpen){ dockHide(); return; }
   if(popAliveFresh()){ channel.post({type:"pop-hide"});           // it lives in another tab: ask it to close itself
     syncPopAffordance(); toast("Pop-out hidden — playback continues on this page."); return; }
+  if(mobileBrowser()){ dockShow(); return; }                     // a tab is not a mini player: dock it
   let w = null;
   try { w = window.open("popout.html","rbgPop","popup=1,width=330,height=250,left="+Math.max(0,(screen.availWidth-340))+",top="+Math.max(0,(screen.availHeight-300))+",resizable=yes,scrollbars=no"); }
   catch(e){ w = null; }
